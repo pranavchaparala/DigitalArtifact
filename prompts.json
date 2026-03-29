@@ -1,0 +1,23 @@
+[
+  {
+    "question": "Where do you live?",
+    "stickerKey": "op1"
+  },
+  {
+    "question": "What do you love making?",
+    "stickerKey": "nyc"
+  },
+  {
+    "question": "Show me your creative process",
+    "stickerKey": "chair"
+  },
+  {
+    "question": "What music do you listen to?",
+    "stickerKey": "tree"
+  },
+  {
+    "question": "What's the weirdest thing you've made?",
+    "stickerKey": "star"
+  }
+  
+]
