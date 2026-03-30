@@ -204,6 +204,8 @@
       animation: pulse 4s infinite; /* Blink very slowly */
       z-index: 20;
     }
+    #scroll-indicator .mobile-text { display: none; }
+    #scroll-indicator .desktop-text { display: inline; }
 
     #credits {
       position: fixed;
@@ -478,7 +480,17 @@
       }
       .prompt-btn { font-size: 11px; padding: 12px 18px; white-space: nowrap; }
       
-      #scroll-indicator, #credits { display: none; /* Hide conflicting text elements on mobile */ }
+      #credits { display: none; /* Hide conflicting text elements on mobile */ }
+      
+      #scroll-indicator {
+        bottom: 8px;
+        left: 0;
+        width: 100vw;
+        max-width: 100vw;
+        text-align: center;
+      }
+      #scroll-indicator .desktop-text { display: none; }
+      #scroll-indicator .mobile-text { display: inline; }
       
       #insight-tooltip { 
         bottom: 110px; /* Sits above the horizontal prompt list */
@@ -553,7 +565,10 @@
   <div id="prompt-container">
     <div id="prompt-list"></div>
   </div>
-  <div id="scroll-indicator">Scroll for more</div>
+  <div id="scroll-indicator">
+    <span class="desktop-text">Scroll for more</span>
+    <span class="mobile-text">Swipe for more</span>
+  </div>
   
   <div id="credits">
     Built with Gemini 3.1 Pro on Antigravity<br>

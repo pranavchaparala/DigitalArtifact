@@ -813,6 +813,10 @@
   // ─────────────────────────────────────────────────────────
   window.addEventListener('touchmove', e => {
     if (!activeDragKey) return;
+    // Allow native scrolling/swiping if touch is over UI elements
+    if (e.target.closest('#prompt-container') || e.target.closest('.util-btn') || e.target.closest('.popup-card')) {
+      return;
+    }
     e.preventDefault();
     const t = e.touches[0];
     moveDragGhost(t.clientX, t.clientY);
@@ -820,6 +824,10 @@
 
   window.addEventListener('touchend', e => {
     if (!activeDragKey) return;
+    // Do not attempt to place the sticker if lifting finger over UI elements
+    if (e.target.closest('#prompt-container') || e.target.closest('.util-btn') || e.target.closest('.popup-card')) {
+      return;
+    }
     const t = e.changedTouches[0];
     endDrag(t.clientX, t.clientY);
   });
@@ -869,13 +877,7 @@
             startDrag(item.stickerKey, e.clientX, e.clientY);
           }
         });
-        btn.addEventListener('touchstart', e => {
-          e.preventDefault();
-          const t = e.touches[0];
-          initAudio();
-          playTapSound();
-          startDrag(btn.dataset.key, t.clientX, t.clientY);
-        }, { passive: false });
+
 
         list.appendChild(btn);
       });
