@@ -290,6 +290,9 @@
     desc.textContent = sticker.description;
     overlay.classList.add('visible');
     playTapSound(true);
+
+    // Step 3: after viewing, advance hint to scroll guidance
+    setHint('scroll');
   }
 
   document.addEventListener('DOMContentLoaded', () => {
@@ -498,6 +501,11 @@
       resetIdleTimer();
     }
 
+    // Step 2: sticker placed — guide to tap it
+    if (!isAutoPlacing && hintState !== 'scroll' && hintState !== null) {
+      setHint('tap');
+    }
+
     // Show insight summary in bottom-right on placement
     const insightTooltip = document.getElementById('insight-tooltip');
     const insightImg = document.getElementById('insight-img');
@@ -589,6 +597,40 @@
   }
 
   // ─────────────────────────────────────────────────────────
+  // Progressive Onboarding Hint System
+  // ─────────────────────────────────────────────────────────
+  // States: 'select' → 'drop' → 'tap' → 'scroll' → null (done)
+  let hintState = null;
+
+  function setHint(state) {
+    hintState = state;
+    dropHint.classList.remove('pulsing');
+
+    if (state === 'select') {
+      dropHint.textContent = 'SELECT A PROMPT YOU WANT TO KNOW ABOUT';
+      dropHint.classList.add('visible');
+    } else if (state === 'drop') {
+      dropHint.textContent = 'DROP THE STICKER ON THE HEAD';
+      dropHint.classList.add('visible', 'pulsing');
+    } else if (state === 'tap') {
+      dropHint.textContent = 'TAP THE STICKER TO REVEAL';
+      dropHint.classList.add('visible');
+    } else if (state === 'scroll') {
+      dropHint.textContent = 'SCROLL FOR MORE PROMPTS';
+      dropHint.classList.add('visible');
+      // Auto-hide after 4 seconds
+      setTimeout(() => {
+        if (hintState === 'scroll') {
+          dropHint.classList.remove('visible');
+          hintState = null;
+        }
+      }, 4000);
+    } else {
+      dropHint.classList.remove('visible', 'pulsing');
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────
   // Drag system
   // ─────────────────────────────────────────────────────────
   function startDrag(key, cx, cy) {
@@ -596,7 +638,8 @@
     activeDragKey = key;
     modelRotateSpeed = ROTATE_SPEED_SLOW;
 
-    tooltipContainer.textContent = "DROP THE STICKER ON THE HEAD";
+    // Step 1: picked a sticker — guide to drop it
+    setHint('drop');
 
     ghostImg.src = STICKER_DATA[key].src;
     dragGhost.style.display = 'block';
@@ -608,7 +651,6 @@
       if (b.dataset.key === key) b.classList.add('dragging-item');
     });
 
-    dropHint.classList.add('visible', 'pulsing');
     // modelAutoRotate = false; // REMOVED: Keep it rotating
     // clearTimeout(autoRotTimer); // REMOVED: Keep it rotating
   }
@@ -688,13 +730,12 @@
     activeDragKey = null;
     modelRotateSpeed = ROTATE_SPEED_NORMAL;
 
-    // Instruction will revert after the tooltip grace period (see mousemove)
-
     dragGhost.style.display = 'none';
     dragGhost.style.transition = '';
     dragGhost.style.opacity = '1';
     ghostImg.src = '';
-    dropHint.classList.remove('visible', 'pulsing');
+    // Only hide the drop hint — don't change state, placeSticker sets the next step
+    dropHint.classList.remove('pulsing');
     canvas.style.cursor = 'default';
     cursorRing.classList.remove('visible', 'active');
     document.querySelectorAll('.sticker-btn').forEach(b =>
@@ -907,6 +948,9 @@
 
       // Start idle auto-placement timer after splash is dismissed
       resetIdleTimer();
+
+      // Step 0: Guide user to pick a prompt
+      setHint('select');
 
       // Staggered prompt entrance: bottom to top
       const btns = Array.from(document.querySelectorAll('.prompt-btn'));
