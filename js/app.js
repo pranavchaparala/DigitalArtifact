@@ -442,12 +442,12 @@
     const s = (0.42 + Math.random() * 0.26) * STICKER_SCALE;
 
     // Use DecalGeometry to wrap around the mesh surface
-    // Depth (s * 0.6) for reliable projection
+    // Depth (s * 1.25) prevents clipping on bumps but avoids projecting through to the other side
     const geo = new THREE.DecalGeometry(
       hitObject,
       hitPoint,
       orientation,
-      new THREE.Vector3(s, s, s * 0.6)
+      new THREE.Vector3(s, s, s * 1.25)
     );
 
     // Transform decal geometry from world space into headGroup local space
@@ -456,17 +456,22 @@
     inverseMatrix.copy(headGroup.matrixWorld).invert();
     geo.applyMatrix4(inverseMatrix);
 
-    const mat = new THREE.MeshStandardMaterial({
+    // Use MeshPhysicalMaterial for a "gel sticker" effect, adding perceived depth
+    const mat = new THREE.MeshPhysicalMaterial({
       map: tex,
       transparent: true,
       alphaTest: 0.04,
       depthWrite: false,
       depthTest: true,
       side: THREE.FrontSide,
-      roughness: 0.45, // More receptive to light for holo shimmer
-      metalness: 0.2,
+      roughness: 0.45,
+      metalness: 0.1,
+      bumpMap: tex, // Uses the texture alpha/color for a slight raised bump
+      bumpScale: 0.08, 
+      clearcoat: 1.0, // Gel finish
+      clearcoatRoughness: 0.2,
       polygonOffset: true,
-      polygonOffsetFactor: -4.5, // Slightly lifted for "depth"
+      polygonOffsetFactor: -4.5,
       polygonOffsetUnits: -4.5,
     });
 
@@ -933,6 +938,24 @@
   });
   infoOverlay.addEventListener('click', () => {
     infoOverlay.classList.remove('visible');
+  });
+
+  const resetBtn = document.getElementById('reset-btn');
+  resetBtn.addEventListener('click', () => {
+    // Remove all sticker meshes from the group
+    placedStickers.forEach(sticker => {
+      headGroup.remove(sticker.mesh);
+      if (sticker.mesh.geometry) sticker.mesh.geometry.dispose();
+      if (sticker.mesh.material) sticker.mesh.material.dispose();
+    });
+    // Clear array
+    placedStickers = [];
+    if (hoveredSticker) {
+      resetHolographic();
+      hoveredSticker = null;
+    }
+    tooltip.classList.remove('visible');
+    playTapSound(false);
   });
 
   // ─────────────────────────────────────────────────────────

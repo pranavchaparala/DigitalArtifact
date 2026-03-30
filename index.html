@@ -76,8 +76,9 @@
       z-index: 5;
       font-size: 13.5px; font-weight: 500;
       letter-spacing: 0.12em;
-      color: var(--muted);
-      opacity: 1; transition: opacity 0.5s ease;
+      color: #fff; /* White base color for difference */
+      mix-blend-mode: difference; /* Inverts against background/model to always remain readable */
+      opacity: 0.7; transition: opacity 0.5s ease;
       text-transform: uppercase;
       pointer-events: none; user-select: none;
       text-align: center;
@@ -95,7 +96,7 @@
       pointer-events: none; user-select: none;
       backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
       color: var(--text);
-      text-align: center;
+      text-align: justify;
     }
     
     #insight-tooltip img {
@@ -302,6 +303,7 @@
       font-weight: 400;
       letter-spacing: 0.02em;
       color: rgba(255,255,255,0.85);
+      text-align: justify;
     }
     .splash-body p {
       margin-bottom: 24px;
@@ -454,11 +456,37 @@
       .util-btn { width: 42px; height: 42px; }
       .util-btn svg { width: 22px; height: 22px; }
       
-      #prompt-container { left: var(--lateral); bottom: var(--bottom); width: calc(100% - 48px); max-height: 40vh; }
-      #prompt-list { gap: 14px; }
-      .prompt-btn { font-size: 11px; padding: 12px 18px; }
+      /* Mobile Horizontal Prompt List */
+      #prompt-container { 
+        left: 0; 
+        bottom: 24px; 
+        width: 100vw; 
+        max-width: 100vw; 
+        height: auto;
+        /* Horizontal mask instead of vertical */
+        -webkit-mask-image: linear-gradient(to right, transparent, black 5%, black 95%, transparent);
+        mask-image: linear-gradient(to right, transparent, black 5%, black 95%, transparent);
+      }
+      #prompt-list { 
+        flex-direction: row; 
+        overflow-x: auto; 
+        overflow-y: hidden; 
+        padding: 16px var(--lateral); 
+        padding-bottom: 24px;
+        max-height: none;
+        gap: 12px; 
+      }
+      .prompt-btn { font-size: 11px; padding: 12px 18px; white-space: nowrap; }
       
-      #insight-tooltip { right: var(--lateral); bottom: var(--bottom); max-width: 160px; padding: 12px; }
+      #scroll-indicator, #credits { display: none; /* Hide conflicting text elements on mobile */ }
+      
+      #insight-tooltip { 
+        bottom: 110px; /* Sits above the horizontal prompt list */
+        right: var(--lateral); 
+        left: var(--lateral); /* Center-align tooltip on mobile */
+        max-width: calc(100vw - 48px); 
+        padding: 16px; 
+      }
       #insight-img { width: 48px; }
       #insight-text { font-size: 11px; }
 
@@ -486,10 +514,9 @@
       <img src="logo.png" class="splash-logo-img" alt="Logo">
       <div class="splash-subtitle">A data portrait built to be vandalized.</div>
       <div class="splash-body">
-        <p>I moved to New York and couldn't stop looking at the walls. Every surface tagged, stickered, pasted over—layers of people saying I was here, this is me, I made this. The city calls it vandalism. I see the most honest portrait format that exists.</p>
-        <p>De//Faced is a 3D sculpture of my head, rotating, waiting—built to be marked up.</p>
-        <p>My identity only becomes visible when you choose to mark it. Select a prompt to generate a fragment of my practice—how I start, what I make when nobody’s watching, or what I can’t stop thinking about. Gemini will translate the choice into a sticker and slap it onto the surface.</p>
-        <p>You don’t observe it. You leave something on it.</p>
+        <p>In New York, identity isn't given; it's claimed. Every tagged brick and wheat-pasted door is a layer of existence—an honest, chaotic record of "I am here.".</p>
+        <p>De//Faced is a rotating 3D sculpture of my head, stripped of detail and waiting for impact. It is a blank canvas that only gains definition through your interference. My practice isn't a finished object to be observed—it's a surface to be marked.</p>
+        <p>Leave your mark. Choose a prompt to slap a fragment of my process onto the void.</p>
       </div>
       <div id="splash-click-text">Click to Begin</div>
     </div>
@@ -509,6 +536,12 @@
   </div>
 
   <div id="top-right-controls">
+    <button class="util-btn" id="reset-btn" title="Reset Stickers">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
+        <path d="M3 3v5h5"></path>
+      </svg>
+    </button>
     <button class="util-btn" id="mute-btn" title="Mute Audio">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
     </button>
@@ -539,12 +572,10 @@
   <div id="info-popup-overlay">
     <div class="popup-card">
       <img src="logo.png" class="popup-img" alt="Logo" style="width: 140px; margin-bottom: 24px;">
-      <div class="popup-desc" style="text-align: center; max-width: 520px; text-transform: none; letter-spacing: 0.02em;">
-        <div class="splash-subtitle">A data portrait built to be vandalized</div>
-        <p style="margin-bottom: 16px;">I moved to New York and couldn't stop looking at the walls. Every surface tagged, stickered, pasted over—layers of people saying I was here, this is me, I made this. The city calls it vandalism. I see the most honest portrait format that exists.</p>
-        <p style="margin-bottom: 16px;">De//Faced is a 3D sculpture of my head, rotating, waiting—built to be marked up.</p>
-        <p style="margin-bottom: 16px;">My identity only becomes visible when you choose to mark it. Select a prompt to generate a fragment of my practice—how I start, what I make when nobody’s watching, or what I can’t stop thinking about. Gemini will translate the choice into a sticker and slap it onto the surface.</p>
-        <p>You don’t observe it. You leave something on it.</p>
+      <div class="popup-desc" style="text-align: justify; max-width: 520px; text-transform: none; letter-spacing: 0.02em;">
+        <p style="margin-bottom: 16px;">In New York, identity isn't given; it's claimed. Every tagged brick and wheat-pasted door is a layer of existence—an honest, chaotic record of "I am here.".</p>
+        <p style="margin-bottom: 16px;">De//Faced is a rotating 3D sculpture of my head, stripped of detail and waiting for impact. It is a blank canvas that only gains definition through your interference. My practice isn't a finished object to be observed—it's a surface to be marked.</p>
+        <p>Leave your mark. Choose a prompt to slap a fragment of my process onto the void.</p>
       </div>
     </div>
   </div>
