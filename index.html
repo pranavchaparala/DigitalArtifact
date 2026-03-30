@@ -370,6 +370,38 @@
       width: 60px;
       height: 60px;
     }
+
+    /* ── Mobile Responsiveness ── */
+    @media (max-width: 768px) {
+      :root {
+        --lateral: 24px;
+        --bottom: 32px;
+      }
+      
+      #brand { top: 20px; left: var(--lateral); }
+      #brand-logo { height: 50px; } /* Slightly bigger as requested */
+      
+      #top-right-controls { top: 24px; right: var(--lateral); gap: 12px; }
+      .util-btn { width: 42px; height: 42px; }
+      .util-btn svg { width: 22px; height: 22px; }
+      
+      #prompt-list { left: var(--lateral); bottom: var(--bottom); gap: 14px; width: calc(100% - 48px); }
+      .prompt-btn { font-size: 11px; padding: 12px 18px; }
+      
+      #insight-tooltip { right: var(--lateral); bottom: var(--bottom); max-width: 160px; padding: 12px; }
+      #insight-img { width: 48px; }
+      #insight-text { font-size: 11px; }
+
+      .splash-logo-img { width: 220px; }
+      .splash-title { font-size: 32px; }
+      .splash-subtitle { font-size: 12px; margin-bottom: 32px; }
+      .splash-body { font-size: 14.5px; line-height: 1.7; }
+      .splash-content { padding: 0 10px; }
+
+      .popup-card { max-width: 90%; }
+      .popup-img { width: 180px; }
+      .popup-desc { font-size: 14px; }
+    }
   </style>
 </head>
 
