@@ -9,15 +9,15 @@
   // ─────────────────────────────────────────────────────────
   // DOM
   // ─────────────────────────────────────────────────────────
-  const canvas       = document.getElementById('canvas');
-  const loadingEl    = document.getElementById('loading');
-  const loadingText  = document.getElementById('loading-text');
+  const canvas = document.getElementById('canvas');
+  const loadingEl = document.getElementById('loading');
+  const loadingText = document.getElementById('loading-text');
   const stickerCount = document.getElementById('sticker-count');
-  const dragGhost    = document.getElementById('drag-ghost');
-  const ghostImg     = document.getElementById('ghost-img');
-  const dropHint     = document.getElementById('drop-hint');
-  const tooltip      = document.getElementById('tooltip');
-  const cursorRing   = document.getElementById('cursor-ring');
+  const dragGhost = document.getElementById('drag-ghost');
+  const ghostImg = document.getElementById('ghost-img');
+  const dropHint = document.getElementById('drop-hint');
+  const tooltip = document.getElementById('tooltip');
+  const cursorRing = document.getElementById('cursor-ring');
 
   // ─────────────────────────────────────────────────────────
   // Renderer
@@ -26,10 +26,10 @@
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.shadowMap.enabled = true;
-  renderer.shadowMap.type    = THREE.PCFSoftShadowMap;
-  renderer.outputEncoding    = THREE.sRGBEncoding;
-  renderer.toneMapping       = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.05;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.outputEncoding = THREE.sRGBEncoding;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.0; // Reduced from 1.5 to darken overall scene
 
   // ─────────────────────────────────────────────────────────
   // Scene
@@ -40,9 +40,9 @@
   // Background wall — invisible, only catches shadow
   const wallMesh = new THREE.Mesh(
     new THREE.PlaneGeometry(60, 60),
-    new THREE.ShadowMaterial({ opacity: 0.2 })
+    new THREE.ShadowMaterial({ opacity: 0.08 }) // Reduced opacity for subtle shadow
   );
-  wallMesh.position.z = -4;
+  wallMesh.position.z = -6; // Brought a little closer
   wallMesh.rotation.x = -0.15;
   wallMesh.receiveShadow = true;
   scene.add(wallMesh);
@@ -53,22 +53,30 @@
   const camera = new THREE.PerspectiveCamera(
     36, window.innerWidth / window.innerHeight, 0.01, 100
   );
-  camera.position.set(0, 8.8, 20.5);
+  camera.position.set(0, 0, 20.5);
+  camera.lookAt(0, 0, 0);
 
-  // ─────────────────────────────────────────────────────────
-  // Orbit controls
-  // ─────────────────────────────────────────────────────────
-  const controls = new THREE.OrbitControls(camera, canvas);
-  controls.enableDamping   = true;
-  controls.dampingFactor   = 0.055;
-  controls.enablePan       = false;
-  controls.minDistance     = 3.5;
-  controls.maxDistance     = 13;
-  controls.minPolarAngle   = Math.PI * 0.12;
-  controls.maxPolarAngle   = Math.PI * 0.82;
-  controls.target.set(0, 0.6, 0);
-  controls.autoRotate      = false;
-  controls.autoRotateSpeed = 0;
+  // Fixed camera position
+  camera.position.set(0, 0, 20.5);
+  camera.lookAt(0, 0, 0);
+
+  // Manual zoom via scroll wheel
+  window.addEventListener('wheel', e => {
+    // Only zoom if not dragging a sticker
+    if (activeDragKey) return;
+    
+    // Smooth zoom adjustment
+    const zoomAmount = e.deltaY * 0.02;
+    camera.position.z += zoomAmount;
+    
+    // Strict Zoom Limits
+    const minZ = 12;
+    const maxZ = 38;
+    camera.position.z = Math.max(minZ, Math.min(maxZ, camera.position.z));
+    
+    // Prevent page scroll
+    if (e.cancelable) e.preventDefault();
+  }, { passive: false });
 
   // Model-based rotation state
   let modelAutoRotate = true;
@@ -77,26 +85,31 @@
   // ─────────────────────────────────────────────────────────
   // Lighting — strong key from top-left, casting shadow down-right onto wall
   // ─────────────────────────────────────────────────────────
-  scene.add(new THREE.AmbientLight(0xE4E4E4, 0.85));
+  scene.add(new THREE.AmbientLight(0xE4E4E4, 0.35));
 
-  // Key — top-left, casting shadow close to the left of the model
-  const keyLight = new THREE.DirectionalLight(0xfff8f0, 2.2);
-  keyLight.position.set(2, 6, 6);
+  // Key — top-left, casting shadow
+  const keyLight = new THREE.DirectionalLight(0xfff8f0, 0.95); // Balanced low
+  keyLight.position.set(-5, 6, 6);
   keyLight.castShadow = true;
   keyLight.shadow.mapSize.set(2048, 2048);
-  keyLight.shadow.camera.near   = 0.5;
-  keyLight.shadow.camera.far    = 40;
-  keyLight.shadow.camera.left   = -12;
-  keyLight.shadow.camera.right  =  12;
-  keyLight.shadow.camera.top    =  12;
+  keyLight.shadow.camera.near = 0.5;
+  keyLight.shadow.camera.far = 40;
+  keyLight.shadow.camera.left = -12;
+  keyLight.shadow.camera.right = 12;
+  keyLight.shadow.camera.top = 12;
   keyLight.shadow.camera.bottom = -12;
-  keyLight.shadow.radius        = 30;
-  keyLight.shadow.bias          = -0.001;
+  keyLight.shadow.radius = 290; // Heavily blurred spread
+  keyLight.shadow.bias = -0.0005;
   scene.add(keyLight);
 
-  // Fill — right, very subtle cool
-  const fillLight = new THREE.DirectionalLight(0xe0e4e8, 0.4);
-  fillLight.position.set(5, 2, 3);
+  // Secondary Key — top-right, opposite side
+  const keyLightOpposite = new THREE.DirectionalLight(0xfff8f0, 0.82); 
+  keyLightOpposite.position.set(5, 6, 6);
+  scene.add(keyLightOpposite);
+
+  // Fill — bottom-right, very subtle cool
+  const fillLight = new THREE.DirectionalLight(0xe0e4e8, 0.25);
+  fillLight.position.set(5, -2, 3);
   scene.add(fillLight);
 
   // Rim — from behind, faint separation
@@ -125,17 +138,25 @@
   // ─────────────────────────────────────────────────────────
   // State
   // ─────────────────────────────────────────────────────────
-  let headMeshes    = [];
-  let headGroup     = null;
+  let headMeshes = [];
+  let headGroup = null;
   let placedStickers = [];   // { mesh, key, label }
-  let activeDragKey  = null;
-  let autoRotTimer   = null;
+  let activeDragKey = null;
+  let autoRotTimer = null;
+
+  // Manual model rotation state
+  let isRotatingModel = false;
+  let prevMousePos = { x: 0, y: 0 };
+  let resetAnimActive = false;
+
+  // Global scale for stickers - increase this for uniform scaling
+  const STICKER_SCALE = 2; 
 
   const raycaster = new THREE.Raycaster();
-  const ndcMouse  = new THREE.Vector2();
+  const ndcMouse = new THREE.Vector2();
 
   // Texture cache
-  const texCache  = {};
+  const texCache = {};
   const texLoader = new THREE.TextureLoader();
 
   function getTex(key) {
@@ -143,7 +164,7 @@
     const d = STICKER_DATA[key];
     if (!d) return null;
     const t = texLoader.load(d.src);
-    t.encoding         = THREE.sRGBEncoding;
+    t.encoding = THREE.sRGBEncoding;
     t.premultiplyAlpha = false;
     texCache[key] = t;
     return t;
@@ -152,78 +173,79 @@
   // ─────────────────────────────────────────────────────────
   // Load GLB
   // ─────────────────────────────────────────────────────────
-// ─────────────────────────────────────────────────────────
-// 1. Setup the Marble Material (Physical-based for SSS feel)
-// ─────────────────────────────────────────────────────────
-const marbleMaterial = new THREE.MeshPhysicalMaterial({
-  color: 0xc5c2be,        // Cool gray plaster tone
-  roughness: 0.72,        // Matte plaster finish
-  metalness: 0.0,
-  clearcoat: 0.05,        // Very faint sheen
-  clearcoatRoughness: 0.4,
-});
+  // ─────────────────────────────────────────────────────────
+  // 1. Setup the Concrete Material (Rough, Matte Gray)
+  const marbleMaterial = new THREE.MeshPhysicalMaterial({
+    color: 0x555555,            // Concrete gray
+    roughness: 1.0,             // Maximum matte for concrete
+    metalness: 0.05,            // Slight grit
+    reflectivity: 0.1,          // Low reflectivity
+    clearcoat: 0.0,
+    flatShading: false
+  });
 
-// ─────────────────────────────────────────────────────────
-// 2. The GLB Loader
-// ─────────────────────────────────────────────────────────
+  // ─────────────────────────────────────────────────────────
+  // 2. The GLB Loader
+  // ─────────────────────────────────────────────────────────
 
-// ─────────────────────────────────────────────────────────
-// 3. The GLB Loader
-// ─────────────────────────────────────────────────────────
-const gltfLoader = new THREE.GLTFLoader();
+  // ─────────────────────────────────────────────────────────
+  // 3. The GLB Loader
+  // ─────────────────────────────────────────────────────────
+  const gltfLoader = new THREE.GLTFLoader();
 
-gltfLoader.load(
-  'models/head_pranav.glb',
-  (gltf) => {
-    const model = gltf.scene;
-    headGroup = model;
+  gltfLoader.load(
+    'models/head_pranav.glb',
+    (gltf) => {
+      const model = gltf.scene;
+      headGroup = model;
 
-    // Scale & Center
-    const bbox = new THREE.Box3().setFromObject(model);
-    const bsz  = new THREE.Vector3();
-    bbox.getSize(bsz);
-    const scale = 4.4 / Math.max(bsz.x, bsz.y, bsz.z);
-    model.scale.setScalar(scale);
-    bbox.setFromObject(model);
-    const center = new THREE.Vector3();
-    bbox.getCenter(center);
-    model.position.sub(center);
-    model.position.y += 1.05;
+      // Scale & Center
+      const bbox = new THREE.Box3().setFromObject(model);
+      const bsz = new THREE.Vector3();
+      bbox.getSize(bsz);
+      const scale = 4.4 / Math.max(bsz.x, bsz.y, bsz.z);
+      model.scale.setScalar(scale);
+      bbox.setFromObject(model);
+      const center = new THREE.Vector3();
+      bbox.getCenter(center);
+      model.position.sub(center);
+      model.position.y = 0; // Centered vertically
+      model.position.z += 6.5; 
 
-    model.traverse(child => {
-      if (!child.isMesh) return;
-      child.castShadow    = true;
-      child.receiveShadow = true;
-      child.material      = marbleMaterial;
-      headMeshes.push(child);
-    });
+      model.traverse(child => {
+        if (!child.isMesh) return;
+        child.castShadow = true;
+        child.receiveShadow = true;
+        child.material = marbleMaterial;
+        headMeshes.push(child);
+      });
 
-    scene.add(model);
+      scene.add(model);
 
-    // Preload thumbnails
-    Object.keys(STICKER_DATA).forEach(k => getTex(k));
-    Object.entries(STICKER_DATA).forEach(([k, d]) => {
-      const el = document.getElementById(`thumb-${k}`);
-      if (el) el.style.backgroundImage = `url("${d.src}")`;
-    });
+      // Preload thumbnails
+      Object.keys(STICKER_DATA).forEach(k => getTex(k));
+      Object.entries(STICKER_DATA).forEach(([k, d]) => {
+        const el = document.getElementById(`thumb-${k}`);
+        if (el) el.style.backgroundImage = `url("${d.src}")`;
+      });
 
-    loadingEl.classList.add('hidden');
-    setTimeout(() => { loadingEl.style.display = 'none'; }, 700);
-  },
-  xhr => {
-    if (xhr.total) loadingText.textContent = `Loading… ${Math.round(xhr.loaded / xhr.total * 100)}%`;
-  },
-  err => {
-    console.error('GLTF error:', err);
-    loadingText.textContent = 'Model Load Error';
-  }
-);
+      loadingEl.classList.add('hidden');
+      setTimeout(() => { loadingEl.style.display = 'none'; }, 700);
+    },
+    xhr => {
+      if (xhr.total) loadingText.textContent = `Loading… ${Math.round(xhr.loaded / xhr.total * 100)}%`;
+    },
+    err => {
+      console.error('GLTF error:', err);
+      loadingText.textContent = 'Model Load Error';
+    }
+  );
 
   // ─────────────────────────────────────────────────────────
   // Raycast helpers
   // ─────────────────────────────────────────────────────────
   function setNDC(cx, cy) {
-    ndcMouse.x =  (cx / window.innerWidth)  * 2 - 1;
+    ndcMouse.x = (cx / window.innerWidth) * 2 - 1;
     ndcMouse.y = -(cy / window.innerHeight) * 2 + 1;
   }
 
@@ -237,7 +259,7 @@ gltfLoader.load(
   function worldToScreen(pt) {
     const v = pt.clone().project(camera);
     return {
-      x: ( v.x * 0.5 + 0.5) * window.innerWidth,
+      x: (v.x * 0.5 + 0.5) * window.innerWidth,
       y: (-v.y * 0.5 + 0.5) * window.innerHeight,
     };
   }
@@ -275,15 +297,16 @@ gltfLoader.load(
 
     const orientation = new THREE.Euler().setFromQuaternion(q);
 
-    // Random size
-    const s = 0.42 + Math.random() * 0.26;
+    // Random size modified by uniform STICKER_SCALE constant
+    const s = (0.42 + Math.random() * 0.26) * STICKER_SCALE;
 
     // Use DecalGeometry to wrap around the mesh surface
+    // Depth (s * 0.6) for reliable projection
     const geo = new THREE.DecalGeometry(
-      hitObject, 
-      hitPoint, 
-      orientation, 
-      new THREE.Vector3(s, s, s * 0.5)
+      hitObject,
+      hitPoint,
+      orientation,
+      new THREE.Vector3(s, s, s * 0.6)
     );
 
     // Transform decal geometry from world space into headGroup local space
@@ -292,16 +315,18 @@ gltfLoader.load(
     inverseMatrix.copy(headGroup.matrixWorld).invert();
     geo.applyMatrix4(inverseMatrix);
 
-    const mat = new THREE.MeshBasicMaterial({
-      map:           tex,
-      transparent:   true,
-      alphaTest:     0.04,
-      depthWrite:    false,
-      depthTest:     true,
-      side:          THREE.FrontSide,
+    const mat = new THREE.MeshStandardMaterial({
+      map: tex,
+      transparent: true,
+      alphaTest: 0.04,
+      depthWrite: false,
+      depthTest: true,
+      side: THREE.FrontSide,
+      roughness: 0.7, // Paper/vinyl feel
+      metalness: 0.1,
       polygonOffset: true,
-      polygonOffsetFactor: -4,
-      polygonOffsetUnits:  -4,
+      polygonOffsetFactor: -4.5, // Slightly lifted for "depth"
+      polygonOffsetUnits: -4.5,
     });
 
     const mesh = new THREE.Mesh(geo, mat);
@@ -322,7 +347,7 @@ gltfLoader.load(
   // Elastic spring animation
   // ─────────────────────────────────────────────────────────
   function elasticIn(mesh, targetScale) {
-    const start    = performance.now();
+    const start = performance.now();
     const duration = 520;
 
     // Elastic ease-out with overshoot
@@ -331,7 +356,7 @@ gltfLoader.load(
       if (t >= 1) return 1;
       const p = 0.35;
       return Math.pow(2, -10 * t) *
-             Math.sin((t - p / 4) * (Math.PI * 2) / p) + 1;
+        Math.sin((t - p / 4) * (Math.PI * 2) / p) + 1;
     }
 
     function tick(now) {
@@ -344,12 +369,51 @@ gltfLoader.load(
     requestAnimationFrame(tick);
   }
 
+  // Smoothly return model to default orientation
+  function smoothReset() {
+    if (!headGroup || resetAnimActive) return;
+    resetAnimActive = true;
+    
+    const startX = headGroup.rotation.x;
+    const startY = headGroup.rotation.y % (Math.PI * 2);
+    const startZ = headGroup.rotation.z;
+    
+    const start = performance.now();
+    const duration = 1200;
+
+    function ease(t) { return t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t; }
+
+    function tick(now) {
+      if (isRotatingModel) { // Abort if user starts dragging again
+        resetAnimActive = false;
+        return;
+      }
+      
+      const t = Math.min((now - start) / duration, 1.0);
+      const e = ease(t);
+      
+      headGroup.rotation.set(
+        startX * (1 - e),
+        startY * (1 - e),
+        startZ * (1 - e)
+      );
+
+      if (t < 1.0) {
+        requestAnimationFrame(tick);
+      } else {
+        resetAnimActive = false;
+        modelAutoRotate = true;
+      }
+    }
+    requestAnimationFrame(tick);
+  }
+
   function updateCount() {
     const n = placedStickers.length;
     stickerCount.textContent =
       n === 0 ? '0 stickers placed' :
-      n === 1 ? '1 sticker placed' :
-      `${n} stickers placed`;
+        n === 1 ? '1 sticker placed' :
+          `${n} stickers placed`;
   }
 
   // ─────────────────────────────────────────────────────────
@@ -359,9 +423,9 @@ gltfLoader.load(
     if (!headMeshes.length) return;
     activeDragKey = key;
 
-    ghostImg.src               = STICKER_DATA[key].src;
-    dragGhost.style.display    = 'block';
-    dragGhost.style.opacity    = '1';
+    ghostImg.src = STICKER_DATA[key].src;
+    dragGhost.style.display = 'block';
+    dragGhost.style.opacity = '1';
     dragGhost.style.transition = '';
     moveDragGhost(cx, cy);
 
@@ -371,16 +435,16 @@ gltfLoader.load(
 
     dropHint.classList.add('visible');
     modelAutoRotate = false;
-    controls.enabled    = false;
+    controls.enabled = false;
     clearTimeout(autoRotTimer);
   }
 
   function moveDragGhost(cx, cy) {
     dragGhost.style.left = cx + 'px';
-    dragGhost.style.top  = cy + 'px';
+    dragGhost.style.top = cy + 'px';
 
     setNDC(cx, cy);
-    const hit  = castHead();
+    const hit = castHead();
     const over = !!hit;
 
     if (over) {
@@ -389,7 +453,7 @@ gltfLoader.load(
         'translate(-50%,-50%) rotate(-5deg) scale(0.75)';
       canvas.style.cursor = 'none';
       cursorRing.style.left = cx + 'px';
-      cursorRing.style.top  = cy + 'px';
+      cursorRing.style.top = cy + 'px';
       cursorRing.classList.add('visible', 'active');
     } else {
       dragGhost.style.transform =
@@ -414,15 +478,15 @@ gltfLoader.load(
         'top  0.13s cubic-bezier(0.22,1,0.36,1),' +
         'transform 0.13s cubic-bezier(0.22,1,0.36,1),' +
         'opacity 0.15s ease';
-      dragGhost.style.left      = sp.x + 'px';
-      dragGhost.style.top       = sp.y + 'px';
+      dragGhost.style.left = sp.x + 'px';
+      dragGhost.style.top = sp.y + 'px';
       dragGhost.style.transform = 'translate(-50%,-50%) rotate(0deg) scale(0.15)';
-      dragGhost.style.opacity   = '0';
+      dragGhost.style.opacity = '0';
 
-      const key    = activeDragKey;
-      const point  = hit.point.clone();
+      const key = activeDragKey;
+      const point = hit.point.clone();
       const normal = hit.face.normal.clone();
-      const obj    = hit.object;
+      const obj = hit.object;
 
       setTimeout(() => {
         placeSticker(key, point, normal, obj);
@@ -440,19 +504,18 @@ gltfLoader.load(
       setTimeout(cleanupDrag, 50);
     }
 
-    controls.enabled = true;
     clearTimeout(autoRotTimer);
     autoRotTimer = setTimeout(() => {
-      modelAutoRotate = true;
-    }, 400);
+      smoothReset();
+    }, 1000);
   }
 
   function cleanupDrag() {
-    activeDragKey              = null;
-    dragGhost.style.display    = 'none';
+    activeDragKey = null;
+    dragGhost.style.display = 'none';
     dragGhost.style.transition = '';
-    dragGhost.style.opacity    = '1';
-    ghostImg.src               = '';
+    dragGhost.style.opacity = '1';
+    ghostImg.src = '';
     dropHint.classList.remove('visible');
     canvas.style.cursor = 'default';
     cursorRing.classList.remove('visible', 'active');
@@ -464,16 +527,43 @@ gltfLoader.load(
   // ─────────────────────────────────────────────────────────
   // Mouse events
   // ─────────────────────────────────────────────────────────
+  // Model Rotation Logic
+  canvas.addEventListener('mousedown', e => {
+    if (activeDragKey) return;
+    isRotatingModel = true;
+    prevMousePos = { x: e.clientX, y: e.clientY };
+    
+    modelAutoRotate = false;
+    resetAnimActive = false; // Interrupt any ongoing reset
+    clearTimeout(autoRotTimer);
+  });
+
   window.addEventListener('mousemove', e => {
+    // 1. Handle sticker drag ghost
     cursorRing.style.left = e.clientX + 'px';
-    cursorRing.style.top  = e.clientY + 'px';
+    cursorRing.style.top = e.clientY + 'px';
 
     if (activeDragKey) {
       moveDragGhost(e.clientX, e.clientY);
       return;
     }
 
-    // Hover: show tooltip on placed stickers
+    // 2. Handle model rotation
+    if (isRotatingModel && headGroup) {
+      const deltaX = e.clientX - prevMousePos.x;
+      const deltaY = e.clientY - prevMousePos.y;
+      
+      headGroup.rotation.y += deltaX * 0.005;
+      headGroup.rotation.x += deltaY * 0.005;
+
+      // Limit vertical rotation to avoid flipping
+      headGroup.rotation.x = Math.max(-Math.PI * 0.25, Math.min(Math.PI * 0.25, headGroup.rotation.x));
+      
+      prevMousePos = { x: e.clientX, y: e.clientY };
+      return;
+    }
+
+    // 3. Hover: show tooltip on placed stickers
     setNDC(e.clientX, e.clientY);
     if (placedStickers.length) {
       raycaster.setFromCamera(ndcMouse, camera);
@@ -484,8 +574,8 @@ gltfLoader.load(
         const found = placedStickers.find(s => s.mesh === hits[0].object);
         if (found) {
           tooltip.textContent = found.label;
-          tooltip.style.left  = (e.clientX + 14) + 'px';
-          tooltip.style.top   = (e.clientY - 30) + 'px';
+          tooltip.style.left = (e.clientX + 14) + 'px';
+          tooltip.style.top = (e.clientY - 30) + 'px';
           tooltip.classList.add('visible');
           return;
         }
@@ -495,17 +585,23 @@ gltfLoader.load(
   });
 
   window.addEventListener('mouseup', e => {
-    if (activeDragKey) endDrag(e.clientX, e.clientY);
-  });
-
-  // Pause auto-rotate on manual orbit
-  canvas.addEventListener('mousedown', () => {
-    if (activeDragKey) return;
-    modelAutoRotate = false;
-    clearTimeout(autoRotTimer);
-    autoRotTimer = setTimeout(() => {
-      modelAutoRotate = true;
-    }, 3500);
+    if (activeDragKey) {
+      endDrag(e.clientX, e.clientY);
+      // Also trigger reset after placing sticker if not dragging
+      clearTimeout(autoRotTimer);
+      autoRotTimer = setTimeout(() => {
+        smoothReset();
+      }, 3000);
+    }
+    
+    if (isRotatingModel) {
+      isRotatingModel = false;
+      clearTimeout(autoRotTimer);
+      autoRotTimer = setTimeout(() => {
+        smoothReset();
+      }, 3000);
+    }
+    isRotatingModel = false;
   });
 
   // ─────────────────────────────────────────────────────────
@@ -566,7 +662,6 @@ gltfLoader.load(
   // ─────────────────────────────────────────────────────────
   (function animate() {
     requestAnimationFrame(animate);
-    controls.update();
     // Rotate the model (not the camera) so shadow stays fixed
     if (modelAutoRotate && headGroup) {
       headGroup.rotation.y += modelRotateSpeed;
