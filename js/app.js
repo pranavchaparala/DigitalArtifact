@@ -227,7 +227,7 @@
   let resetAnimActive = false;
 
   // Global scale for stickers - increase this for uniform scaling
-  const STICKER_SCALE = 2;
+  const STICKER_SCALE = 1.45;
 
   const raycaster = new THREE.Raycaster();
   const ndcMouse = new THREE.Vector2();
@@ -253,7 +253,7 @@
     if (!mesh || !mesh.material) return;
     holoLight.position.copy(hitPoint);
     holoLight.intensity = 3.5;
-    
+
     // Cycle color for holographic feel
     const time = performance.now() * 0.002;
     holoLight.color.setHSL((time % 1), 0.7, 0.6);
@@ -267,7 +267,7 @@
     const img = document.getElementById('popup-img');
     const desc = document.getElementById('popup-desc');
     if (!overlay || !img || !desc) return;
-    
+
     img.src = STICKER_DATA[sticker.key].src;
     desc.textContent = sticker.description;
     overlay.classList.add('visible');
@@ -289,13 +289,21 @@
   // ─────────────────────────────────────────────────────────
   // ─────────────────────────────────────────────────────────
   // 1. Setup the Concrete Material (Rough, Matte Gray)
-  const marbleMaterial = new THREE.MeshPhysicalMaterial({
-    color: 0xe0e0e0,            // Lighter plaster/marble
-    roughness: 0.9,             // Slightly more reflective than concrete
-    metalness: 0.0,
-    reflectivity: 0.2,
-    clearcoat: 0.0,
-    flatShading: false
+  const marbleMaterial = new THREE.MeshStandardMaterial({
+    color: 0xc7c1b5,            // Mid-grey (looks white/marble under light)
+    roughness: 0.45,             // High roughness prevents the "white blowout"
+    metalness: 0.25,             // Stone is not metallic
+
+    // This helps define the shape without making it "pure white"
+    emissive: 0x222222,
+    emissiveIntensity: 1,
+
+    // Safety settings
+    transparent: true,
+    opacity: 0.95,
+    side: THREE.FrontSide,      // Ensures it renders the outer shell only
+    depthWrite: true,
+    depthTest: true
   });
 
   // ─────────────────────────────────────────────────────────
@@ -454,11 +462,11 @@
     mesh.renderOrder = 1;
 
     headGroup.add(mesh);
-    placedStickers.push({ 
-      mesh, 
-      key, 
-      label: data.label, 
-      description: data.description || "" 
+    placedStickers.push({
+      mesh,
+      key,
+      label: data.label,
+      description: data.description || ""
     });
     updateCount();
 
@@ -466,12 +474,12 @@
     const insightTooltip = document.getElementById('insight-tooltip');
     const insightImg = document.getElementById('insight-img');
     const insightText = document.getElementById('insight-text');
-    
+
     if (insightTooltip && insightImg && insightText && data.description) {
       insightImg.src = data.src;
       insightText.textContent = data.description;
       insightTooltip.style.opacity = '1';
-      
+
       // Auto-hide after 5 seconds
       clearTimeout(window.insightTimer);
       window.insightTimer = setTimeout(() => {
@@ -559,7 +567,7 @@
     if (activeDragKey) cleanupDrag();
     activeDragKey = key;
     modelRotateSpeed = ROTATE_SPEED_SLOW;
-    
+
     tooltipContainer.textContent = "DROP ON THE HEAD TO PLACE THE STICKER";
 
     ghostImg.src = STICKER_DATA[key].src;
@@ -651,9 +659,9 @@
   function cleanupDrag() {
     activeDragKey = null;
     modelRotateSpeed = ROTATE_SPEED_NORMAL;
-    
+
     // Instruction will revert after the tooltip grace period (see mousemove)
-    
+
     dragGhost.style.display = 'none';
     dragGhost.style.transition = '';
     dragGhost.style.opacity = '1';
@@ -712,7 +720,7 @@
         if (hoveredSticker) resetHolographic(hoveredSticker.mesh);
         hoveredSticker = hitSticker;
         applyHolographic(hitSticker.mesh, hits[0].point);
-        
+
         // Tooltip text hidden on hover as requested
         tooltip.textContent = hitSticker.label;
         tooltip.style.left = (e.clientX + 14) + 'px';
@@ -760,7 +768,7 @@
 
     if (isRotatingModel) {
       isRotatingModel = false;
-      
+
       // Click detection
       const dist = Math.hypot(e.clientX - clickStartPos.x, e.clientY - clickStartPos.y);
       if (dist < 5) {
@@ -855,7 +863,7 @@
     splash.addEventListener('click', () => {
       initAudio();
       splash.classList.add('hidden');
-      
+
       // Delay rotation until logo lands (2.4s transition)
       setTimeout(() => {
         modelAutoRotate = true;
@@ -890,8 +898,8 @@
   muteBtn.addEventListener('click', () => {
     isMuted = !isMuted;
     bgAudio.muted = isMuted;
-    muteBtn.innerHTML = isMuted ? 
-      `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><line x1="23" y1="9" x2="17" y2="15"></line><line x1="17" y1="9" x2="23" y2="15"></line></svg>` : 
+    muteBtn.innerHTML = isMuted ?
+      `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><line x1="23" y1="9" x2="17" y2="15"></line><line x1="17" y1="9" x2="23" y2="15"></line></svg>` :
       `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>`;
   });
 
