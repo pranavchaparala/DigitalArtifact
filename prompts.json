@@ -1,27 +1,52 @@
 [
   {
-    "question": "What's a tool or material you keep coming back to that surprises people?",
-    "stickerKey": "op1",
-    "description": "A reliable favorite, chosen for its consistent performance and surprising versatility."
+    "question": "What do you make when there's no problem to solve?",
+    "stickerKey": "Delight in simple places",
+    "description": "I look for the overlooked corners of experience where no one is looking for a solution. I make things that don't solve problems, but create opportunities for small, unexpected moments of joy in the mundane."
   },
   {
-    "question": "When something isn't working, what's my move?",
-    "stickerKey": "break",
-    "description": "Tests ideas with kids. A child suggested an AC unit in a chair. That's a real furniture insight that took a 10-second conversation to arrive at."
+    "question": "Where does technology end and you begin?",
+    "stickerKey": "Agency is the interruption",
+    "description": "Technology only ends where you still have the power to stop it. I begin at the point where my awareness overrides the machine's influence—where I can question, redirect, or refuse the automated path."
   },
   {
-    "question": "Where do I do my best thinking?",
-    "stickerKey": "cahir",
-    "description": "The cognitive sanctuary, where focus crystallizes and ideas take flight."
+    "question": "What's the most human thing you've ever made?",
+    "stickerKey": "Built for specific care",
+    "description": "The most human thing I've made wasn't for users but it was a chair for homemakers. It was designed for a specific individual whose voice is often unheard, prioritizing their quiet life of care over universal utility."
   },
   {
-    "question": "When I start something new, what's the first thing I actually do?",
-    "stickerKey": "make",
-    "description": "The decisive inception, the moment when concept first touches reality."
+    "question": "What idea did you kill that you still think about?",
+    "stickerKey": "Tangible ambient interfaces",
+    "description": "I was blending technology into the everyday through touch rather than voice, making interfaces invisible but physical. I sidelined this only because the ethics of Data Stewardship became too pressing to ignore; I couldn't keep building ways to invite data in until I built a way for that data to rot."
   },
   {
-    "question": "What's the weirdest thing you've made?",
-    "stickerKey": "star",
-    "description": "The eccentric outlier, a byproduct of uninhibited experimentation."
+    "question": "What does creative courage look like in your practice?",
+    "stickerKey": "Exploring the uncomfortable",
+    "description": "Courage is the act of ignoring the first ten easy ideas. It's the discipline to keep going and keep making even when the work is likely to be misunderstood, or when it seems destined to fail by industry standards."
+  },
+  {
+    "question": "What's something broken in the world that genuinely bothers you?",
+    "stickerKey": "Curation replaces original thought",
+    "description": "Our perspectives are being flattened because they are shaped by what is already online. True originality is broken; it can only be fixed by carving out physical spaces to notice what hasn’t been fed to us by an algorithm yet."
+  },
+  {
+    "question": "What do you know now that changes how you see everything you made before?",
+    "stickerKey": "Co-authored by the environment",
+    "description": "I used to think my work was mine alone. I now realize everything I've ever made was co-authored by the culture, the tools, and the fleeting, unnoticed moments that surrounded me during the process."
+  },
+  {
+    "question": "What's the question you're trying to answer with your whole practice?",
+    "stickerKey": "Agency through intentional friction",
+    "description": "I am asking how we can design technology that doesn't just do things for us, but waits for us to intervene. I want to replace seamless AI with systems that demand a human spark to proceed."
+  },
+  {
+    "question": "What would you make with Google's scale that you can't make alone?",
+    "stickerKey": "Universal interruptible intelligence",
+    "description": "With Google's scale, I would build a framework that isn't just smarter, but more interruptible. It would be a planetary system where AI only moves forward when it is met with the resistance of human agency."
+  },
+  {
+    "question": "What are you afraid to make?",
+    "stickerKey": "Intelligence that can forget",
+    "description": "My thesis on Data Decay is a prototype, but I am afraid to build a larger system that truly possesses the biological capacity to forget. To create a machine that intentionally destroys its own hoard of data is to create something dangerously close to being alive."
   }
 ]

@@ -172,14 +172,53 @@
       transform: translateY(1px);
     }
 
-    #prompt-list {
+    #prompt-container {
       position: fixed;
       left: 32px;
       bottom: 48px;
+      z-index: 10;
+      /* Remove rigid height from container, let list dictate it up to its max */
+      height: fit-content;
+      width: fit-content;
+      max-width: 85vw; /* Allow wider text pills */
+      overflow: hidden;
+      /* Top and bottom gradient fade masks */
+      -webkit-mask-image: linear-gradient(to bottom, transparent, black 10%, black 90%, transparent);
+      mask-image: linear-gradient(to bottom, transparent, black 10%, black 90%, transparent);
+      pointer-events: auto; /* Define the scroll zone */
+    }
+
+    #scroll-indicator {
+      position: fixed;
+      bottom: 24px; /* Placed cleanly below the prompt container which is at bottom: 48px */
+      left: 32px;
+      width: 100%;
+      text-align: left;
+      font-size: 9px;
+      font-weight: 500;
+      letter-spacing: 0.15em;
+      color: var(--muted);
+      text-transform: uppercase;
+      pointer-events: none;
+      animation: pulse 4s infinite; /* Blink very slowly */
+      z-index: 20;
+    }
+
+    #prompt-list {
       display: flex;
       flex-direction: column;
+      align-items: flex-start; /* Ensure buttons only take up as much width as their text */
       gap: 12px;
-      z-index: 10;
+      overflow-y: auto;
+      max-height: 310px; /* Force scrollbar on the list itself */
+      /* Add padding top/bottom so top/bottom items aren't immediately masked when scrolled to edges */
+      padding: 32px 0; 
+      padding-right: 24px;
+      scrollbar-width: none;
+      pointer-events: auto;
+    }
+    #prompt-list::-webkit-scrollbar {
+      display: none;
     }
 
     /* ── Popups ── */
@@ -254,11 +293,25 @@
     #splash-click-text {
       margin-top: 48px;
       font-size: 11px;
-      font-weight: 400;
-      letter-spacing: 0.4em;
-      color: var(--muted);
+      font-weight: 600;
+      letter-spacing: 0.35em;
+      color: #000000;
+      background: #ffffff;
+      padding: 18px 48px;
+      border-radius: 999px;
       text-transform: uppercase;
-      animation: pulse 3s infinite;
+      display: inline-block;
+      cursor: pointer;
+      transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1), background 0.3s;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+    }
+    #splash-click-text:hover {
+      transform: scale(1.05) translateY(-2px);
+      background: #f8f8f8;
+      box-shadow: 0 15px 40px rgba(0,0,0,0.2);
+    }
+    #splash-click-text:active {
+      transform: scale(0.98) translateY(0);
     }
     @keyframes pulse {
       0%, 100% { opacity: 0.3; }
@@ -385,7 +438,8 @@
       .util-btn { width: 42px; height: 42px; }
       .util-btn svg { width: 22px; height: 22px; }
       
-      #prompt-list { left: var(--lateral); bottom: var(--bottom); gap: 14px; width: calc(100% - 48px); }
+      #prompt-container { left: var(--lateral); bottom: var(--bottom); width: calc(100% - 48px); max-height: 40vh; }
+      #prompt-list { gap: 14px; }
       .prompt-btn { font-size: 11px; padding: 12px 18px; }
       
       #insight-tooltip { right: var(--lateral); bottom: var(--bottom); max-width: 160px; padding: 12px; }
@@ -447,7 +501,10 @@
     </button>
   </div>
 
-  <div id="prompt-list"></div>
+  <div id="prompt-container">
+    <div id="prompt-list"></div>
+  </div>
+  <div id="scroll-indicator">Scroll for more</div>
 
   <!-- Sticker Popup -->
   <div id="sticker-popup-overlay">

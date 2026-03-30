@@ -62,6 +62,12 @@
 
   // Manual zoom via scroll wheel
   window.addEventListener('wheel', e => {
+    // If scrolling over the prompt area, let it happen natively
+    const isOverPrompts = e.target.closest('#prompt-container');
+    if (isOverPrompts) {
+      return; // Allow native scroll, block zoom
+    }
+
     // Only zoom if not dragging a sticker
     if (activeDragKey) return;
 
@@ -227,7 +233,7 @@
   let resetAnimActive = false;
 
   // Global scale for stickers - increase this for uniform scaling
-  const STICKER_SCALE = 1.45;
+  const STICKER_SCALE = 1.65;
 
   const raycaster = new THREE.Raycaster();
   const ndcMouse = new THREE.Vector2();
@@ -239,8 +245,17 @@
   function getTex(key) {
     if (texCache[key]) return texCache[key];
     const d = STICKER_DATA[key];
-    if (!d) return null;
-    const t = texLoader.load(d.src);
+    if (!d) {
+      console.warn(`[Stickers] No data found for key: ${key}`);
+      return null;
+    }
+    console.log(`[Stickers] Loading texture: ${d.src}`);
+    const t = texLoader.load(
+      d.src,
+      (texture) => console.log(`[Stickers] Successfully loaded: ${d.src}`),
+      undefined,
+      (err) => console.error(`[Stickers] Failed to load texture: ${d.src}`, err)
+    );
     t.encoding = THREE.sRGBEncoding;
     t.premultiplyAlpha = false;
     texCache[key] = t;
@@ -817,12 +832,18 @@
   // Dynamic Prompts
   // ─────────────────────────────────────────────────────────
   fetch('prompts.json')
-    .then(res => res.json())
+    .then(res => {
+      if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+      return res.json();
+    })
     .then(data => {
+      console.log(`[Prompts] Loaded ${data.length} prompts`);
       // Merge descriptions into STICKER_DATA
       data.forEach(item => {
         if (STICKER_DATA[item.stickerKey]) {
           STICKER_DATA[item.stickerKey].description = item.description;
+        } else {
+          console.warn(`[Prompts] Sticker key mismatch: ${item.stickerKey}`);
         }
       });
 
