@@ -63,36 +63,80 @@
 
     /* ── Interface ── */
     #brand {
-      position: fixed; left: 50%; top: 32px; transform: translateX(-50%); z-index: 10;
-      opacity: 0; transition: opacity 1s ease;
-      user-select: none;
+      position: fixed; top: 16px; left: 32px; z-index: 10;
+      opacity: 0.9;
     }
-    #brand img { height: 28px; width: auto; }
+    #brand-logo {
+      height: 80px; width: auto; object-fit: contain;
+    }
 
-    #sticker-count {
+    #drop-hint {
       position: fixed;
-      left: 32px;
-      bottom: 32px;
-      z-index: 10;
-      font-size: 13px;
-      font-weight: 400;
+      left: 50%; top: 15%; transform: translateX(-50%);
+      z-index: 5;
+      font-size: 13.5px; font-weight: 500;
+      letter-spacing: 0.12em;
       color: var(--muted);
-      user-select: none;
+      opacity: 1; transition: opacity 0.5s ease;
+      text-transform: uppercase;
+      pointer-events: none; user-select: none;
+      text-align: center;
     }
 
-    #prompt-list {
-      position: fixed;
-      left: 32px;
-      bottom: 84px;
-      z-index: 20;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      align-items: flex-start;
+    #insight-tooltip {
+      position: fixed; bottom: 48px; right: 48px; z-index: 10;
+      padding: 18px;
+      background: var(--pill); border: 1px solid var(--pill-border);
+      border-radius: 12px; font-size: 13px; max-width: 320px;
+      display: flex; flex-direction: column; align-items: center; gap: 16px;
+      /* No uppercase as requested */
+      opacity: 0; transition: opacity 0.5s ease;
+      letter-spacing: 0.05em; line-height: 1.5;
+      pointer-events: none; user-select: none;
+      backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+      color: var(--text);
+      text-align: center;
     }
+    
+    #insight-tooltip img {
+      width: 64px; height: 64px;
+      object-fit: contain;
+      border-radius: 6px;
+      background: rgba(255,255,255,0.05);
+    }
+
+    #info-popup-overlay {
+      position: fixed; inset: 0; z-index: 250;
+      background: rgba(0,0,0,0.3);
+      backdrop-filter: blur(40px); -webkit-backdrop-filter: blur(40px);
+      display: flex; align-items: center; justify-content: center;
+      opacity: 0; visibility: hidden;
+      transition: opacity 0.7s ease;
+      cursor: pointer;
+    }
+    #info-popup-overlay.visible { opacity: 1; visibility: visible; }
+    #info-popup-overlay #popup-card { max-width: 440px; }
+
+    #top-right-controls {
+      position: fixed; top: 32px; right: 32px; z-index: 30;
+      display: flex; gap: 12px; align-items: center;
+    }
+
+    .util-btn {
+      width: 36px; height: 36px;
+      border-radius: 50%;
+      background: var(--pill);
+      border: 1px solid var(--pill-border);
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer;
+      color: var(--text);
+      backdrop-filter: blur(14px);
+      transition: background 0.2s, transform 0.2s;
+    }
+    .util-btn:hover { background: var(--pill-hover); transform: scale(1.05); }
 
     .prompt-btn {
-      padding: 10px 18px;
+      padding: 12px 22px;
       background: var(--pill);
       border: 1px solid var(--pill-border);
       border-radius: 999px;
@@ -103,9 +147,20 @@
       cursor: pointer;
       backdrop-filter: blur(14px);
       -webkit-backdrop-filter: blur(14px);
-      transition: background 0.15s, transform 0.15s;
+      text-align: left;
+      transition: opacity 0.8s cubic-bezier(0.22, 1, 0.36, 1), 
+                  transform 0.8s cubic-bezier(0.22, 1, 0.36, 1), 
+                  background 0.15s;
       user-select: none;
       white-space: nowrap;
+      
+      /* Initial state for staggering */
+      opacity: 0;
+      transform: translateY(12px);
+    }
+    .prompt-btn.v-shown {
+      opacity: 1;
+      transform: translateY(0);
     }
 
     .prompt-btn:hover {
@@ -117,13 +172,103 @@
       transform: translateY(1px);
     }
 
-    /* ── Chat Input ── */
-    #chat-input-container {
+    #prompt-list {
       position: fixed;
       left: 32px;
-      bottom: 32px;
-      z-index: 20;
-      width: 440px;
+      bottom: 48px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      z-index: 10;
+    }
+
+    /* ── Popups ── */
+    #sticker-popup-overlay, #info-popup-overlay {
+      position: fixed; inset: 0; z-index: 250;
+      background: rgba(0,0,0,0.6);
+      backdrop-filter: blur(40px); -webkit-backdrop-filter: blur(40px);
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      opacity: 0; visibility: hidden;
+      transition: opacity 0.8s ease, visibility 0.8s;
+      cursor: pointer;
+    }
+    #sticker-popup-overlay.visible, #info-popup-overlay.visible { opacity: 1; visibility: visible; }
+
+    .popup-card {
+      /* No container background/border as requested */
+      background: none;
+      border: none;
+      padding: 0;
+      max-width: 600px;
+      text-align: center;
+      transform: scale(0.95);
+      transition: transform 0.8s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+    .visible .popup-card { transform: scale(1); }
+
+    .popup-img { width: 240px; height: auto; margin-bottom: 32px; filter: drop-shadow(0 10px 20px rgba(0,0,0,0.3)); }
+    .popup-desc { 
+      font-size: 16px; line-height: 1.6; color: var(--text); 
+      text-transform: uppercase; letter-spacing: 0.12em;
+    }
+
+    /* ── Splash Screen (Manifesto) ── */
+    #splash {
+      position: fixed; inset: 0; z-index: 500;
+      background: rgba(10, 10, 10, 0.45);
+      backdrop-filter: blur(64px); -webkit-backdrop-filter: blur(64px);
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      cursor: pointer;
+      transition: opacity 1.2s cubic-bezier(0.22, 1, 0.36, 1), visibility 1.2s;
+      padding: 40px;
+      text-align: center;
+      color: var(--text);
+      overflow-y: auto;
+    }
+    .splash-content {
+      max-width: 680px;
+      z-index: 2;
+    }
+    .splash-logo-img {
+      width: 320px; height: auto;
+      margin-bottom: 8px; /* Closer to subtitle */
+      filter: drop-shadow(0 0 40px rgba(255,255,255,0.05));
+    }
+    .splash-subtitle {
+      font-size: 14px;
+      letter-spacing: 0.15em;
+      margin-bottom: 32px; /* Closer to logo, more space for body */
+      color: var(--muted);
+      text-transform: uppercase;
+    }
+    .splash-body {
+      font-size: 17px;
+      line-height: 1.8;
+      font-weight: 400;
+      letter-spacing: 0.02em;
+      color: rgba(255,255,255,0.85);
+    }
+    .splash-body p {
+      margin-bottom: 24px;
+    }
+    #splash-click-text {
+      margin-top: 48px;
+      font-size: 11px;
+      font-weight: 400;
+      letter-spacing: 0.4em;
+      color: var(--muted);
+      text-transform: uppercase;
+      animation: pulse 3s infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 0.3; }
+      50% { opacity: 1; }
+    }
+    #splash.hidden { opacity: 0; visibility: hidden; }
+    #splash.hidden #splash-logo { 
+      top: 46px; 
+      transform: translate(-50%, -50%) scale(0.1);
+      opacity: 0;
     }
 
     #chat-input {
@@ -177,21 +322,6 @@
     }
 
     /* ── Drop hint ── */
-    #drop-hint {
-      position: fixed;
-      bottom: 44px;
-      left: 50%;
-      transform: translateX(-50%);
-      z-index: 20;
-      pointer-events: none;
-      font-size: 11.5px;
-      font-weight: 300;
-      letter-spacing: 0.12em;
-      color: var(--muted);
-      opacity: 0;
-      transition: opacity 0.4s;
-    }
-
     #drop-hint.visible {
       opacity: 1;
     }
@@ -240,42 +370,6 @@
       width: 60px;
       height: 60px;
     }
-
-    /* ── Splash Screen (New) ── */
-    #splash {
-      position: fixed; inset: 0; z-index: 100;
-      background: url('background.avif') center/cover no-repeat;
-      display: flex; flex-direction: column; align-items: center; justify-content: center;
-      cursor: pointer;
-      transition: opacity 1s ease, visibility 1s;
-    }
-    #splash::before {
-      content: ''; position: absolute; inset: 0;
-      background: rgba(0,0,0,0.7); z-index: 1;
-    }
-    #splash-logo {
-      position: absolute; top: 50%; left: 50%;
-      transform: translate(-50%, -50%);
-      width: 280px; height: auto; z-index: 2;
-      transition: all 2.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-    }
-    #splash-click-text {
-      position: absolute; bottom: 64px; left: 50%; transform: translateX(-50%);
-      z-index: 2; font-size: 12px; font-weight: 400; letter-spacing: 0.3em;
-      color: var(--muted); text-transform: uppercase;
-      animation: pulse 2s infinite;
-    }
-    @keyframes pulse {
-      0%, 100% { opacity: 0.4; }
-      50% { opacity: 1; }
-    }
-    #splash.hidden { opacity: 0; visibility: hidden; }
-    #splash.hidden #splash-logo { 
-      /* Absolute move to top position matching #brand (32px top + half height) */
-      top: 46px; 
-      transform: translate(-50%, -50%) scale(0.1);
-      opacity: 0.8;
-    }
   </style>
 </head>
 
@@ -286,8 +380,17 @@
 
   <!-- Splash Screen -->
   <div id="splash">
-    <img id="splash-logo" src="logo.png" alt="Logo">
-    <div id="splash-click-text">Click to Start</div>
+    <div class="splash-content">
+      <img src="logo.png" class="splash-logo-img" alt="Logo">
+      <div class="splash-subtitle">A data portrait built to be vandalized.</div>
+      <div class="splash-body">
+        <p>I moved to New York and couldn't stop looking at the walls. Every surface tagged, stickered, pasted over—layers of people saying I was here, this is me, I made this. The city calls it vandalism. I see the most honest portrait format that exists.</p>
+        <p>De//Faced is a 3D sculpture of my head, rotating, waiting—built to be marked up.</p>
+        <p>My identity only becomes visible when you choose to mark it. Select a prompt to generate a fragment of my practice—how I start, what I make when nobody’s watching, or what I can’t stop thinking about. Gemini will translate the choice into a sticker and slap it onto the surface.</p>
+        <p>You don’t observe it. You leave something on it.</p>
+      </div>
+      <div id="splash-click-text">Click to Begin</div>
+    </div>
   </div>
 
   <!-- Loading screen -->
@@ -296,21 +399,48 @@
     <div id="loading-text">Loading model…</div>
   </div>
 
-  <div id="brand"><img src="logo.png" alt="Logo"></div>
-  <div id="sticker-count">0 stickers placed</div>
+  <div id="brand"><img src="logo.png" id="brand-logo" alt="Logo"></div>
+  <div id="drop-hint">CHOOSE AN INSIGHT TO BEGIN</div>
+  <div id="insight-tooltip">
+    <img src="" alt="" id="insight-img">
+    <span id="insight-text"></span>
+  </div>
 
-  <!-- Conversation interface -->
+  <div id="top-right-controls">
+    <button class="util-btn" id="mute-btn" title="Mute Audio">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
+    </button>
+    <button class="util-btn" id="info-btn" title="Information">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+    </button>
+  </div>
+
   <div id="prompt-list"></div>
 
-  <div id="chat-input-container">
-    <input type="text" id="chat-input" placeholder="Ask me a question that you want to know about...">
+  <!-- Sticker Popup -->
+  <div id="sticker-popup-overlay">
+    <div class="popup-card">
+      <img id="popup-img" class="popup-img" src="" alt="">
+      <div id="popup-desc" class="popup-desc"></div>
+    </div>
+  </div>
+
+  <!-- Info Popup -->
+  <div id="info-popup-overlay">
+    <div class="popup-card">
+      <img src="logo.png" class="popup-img" alt="Logo" style="width: 140px; margin-bottom: 24px;">
+      <div class="popup-desc" style="text-align: center; max-width: 520px; text-transform: none; letter-spacing: 0.02em;">
+        <h2 style="font-size: 24px; font-weight: 300; letter-spacing: 0.2em; margin-bottom: 24px; color: #fff; text-transform: uppercase;">De//Faced</h2>
+        <p style="margin-bottom: 16px;">I moved to New York and couldn't stop looking at the walls. Every surface tagged, stickered, pasted over—layers of people saying I was here, this is me, I made this. The city calls it vandalism. I see the most honest portrait format that exists.</p>
+        <p style="margin-bottom: 16px;">De//Faced is a 3D sculpture of my head, rotating, waiting—built to be marked up.</p>
+        <p style="margin-bottom: 16px;">My identity only becomes visible when you choose to mark it. Select a prompt to generate a fragment of my practice—how I start, what I make when nobody’s watching, or what I can’t stop thinking about. Gemini will translate the choice into a sticker and slap it onto the surface.</p>
+        <p>You don’t observe it. You leave something on it.</p>
+      </div>
+    </div>
   </div>
 
   <!-- Drag ghost -->
   <div id="drag-ghost"><img id="ghost-img" src="" alt=""></div>
-
-  <!-- Drop hint -->
-  <div id="drop-hint">Drop on the head to place sticker</div>
 
   <!-- Tooltip -->
   <div id="tooltip"></div>

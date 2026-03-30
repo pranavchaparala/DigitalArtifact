@@ -35,7 +35,7 @@
   // Scene
   // ─────────────────────────────────────────────────────────
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color(0xA8A6A4);
+  scene.background = new THREE.Color(0x8E8C8A);
 
   // Background wall — invisible, only catches shadow
   const wallMesh = new THREE.Mesh(
@@ -78,13 +78,7 @@
     if (e.cancelable) e.preventDefault();
   }, { passive: false });
 
-  // Model-based rotation state
-  let modelAutoRotate = false;
-  const modelRotateSpeed = 0.003;
-
-  // ─────────────────────────────────────────────────────────
-  // Lighting — strong key from top-left, casting shadow down-right onto wall
-  // ─────────────────────────────────────────────────────────
+  // Main Light
   scene.add(new THREE.AmbientLight(0xE4E4E4, 0.35));
 
   // Main Light — from upper-left, strong (matching ref image)
@@ -99,7 +93,7 @@
   dirLight1.shadow.camera.right = 20;
   dirLight1.shadow.camera.top = 20;
   dirLight1.shadow.camera.bottom = -20;
-  dirLight1.shadow.radius = 12; // Form-defining softness, not total blur
+  dirLight1.shadow.radius = 48; // Significantly blurred for soft contact look
   scene.add(dirLight1);
 
   // Fill Light — from right, very subtle
@@ -123,9 +117,47 @@
   scene.add(bgSpotRight);
   scene.add(bgSpotRight.target);
 
+  // Combine/Reposition for a strong white gradient from top-left
+  const bgSpotTopLeft = new THREE.SpotLight(0xffffff, 85, 150, Math.PI / 3, 0.8, 0.4);
+  bgSpotTopLeft.position.set(-20, 18, -2);
+  bgSpotTopLeft.target.position.set(5, -5, -6);
+  bgSpotTopLeft.layers.set(1);
+  scene.add(bgSpotTopLeft);
+  scene.add(bgSpotTopLeft.target);
+
+  // NEW: Shadow Plane — invisible but receives a SINGLE soft shadow from dirLight1
+  const shadowPlaneGeo = new THREE.PlaneGeometry(50, 50);
+  const shadowPlaneMat = new THREE.ShadowMaterial({ opacity: 0.12 });
+  const shadowPlane = new THREE.Mesh(shadowPlaneGeo, shadowPlaneMat);
+  shadowPlane.rotation.x = -Math.PI / 2;
+  shadowPlane.position.y = -2.8; // Closer to the head
+  shadowPlane.receiveShadow = true;
+  scene.add(shadowPlane);
+
+  // Holographic Point Light — localized hover shimmer
+  const holoLight = new THREE.PointLight(0x00ffff, 0, 2);
+  scene.add(holoLight);
+
   // ─────────────────────────────────────────────────────────
   // State
   // ─────────────────────────────────────────────────────────
+  // State
+  let modelAutoRotate = true;
+  let modelRotateSpeed = 0.002;
+  const ROTATE_SPEED_NORMAL = 0.002;
+  const ROTATE_SPEED_SLOW = 0.0012;
+
+  // Suggestions logic
+  const suggestions = [
+    "CHOOSE AN INSIGHT TO BEGIN",
+    "CLICK ON STICKERS TO GET MORE INSIGHTS",
+    "SCROLL TO ZOOM",
+    "DRAG TO ROTATE"
+  ];
+  let currentSugIdx = 0;
+  let suggestionTimer = 0;
+  const tooltipContainer = document.getElementById('drop-hint');
+
   // Audio — background ambient
   const bgAudio = new Audio('Music_fx_generative_ambient_texture_no_melod.wav');
   bgAudio.loop = true;
@@ -187,6 +219,7 @@
   let placedStickers = [];   // { mesh, key, label }
   let activeDragKey = null;
   let autoRotTimer = null;
+  let hoveredSticker = null; // Track current holographic hover
 
   // Manual model rotation state
   let isRotatingModel = false;
@@ -213,6 +246,42 @@
     texCache[key] = t;
     return t;
   }
+  // ─────────────────────────────────────────────────────────
+  // Sticker Effects
+  // ─────────────────────────────────────────────────────────
+  function applyHolographic(mesh, hitPoint) {
+    if (!mesh || !mesh.material) return;
+    holoLight.position.copy(hitPoint);
+    holoLight.intensity = 3.5;
+    
+    // Cycle color for holographic feel
+    const time = performance.now() * 0.002;
+    holoLight.color.setHSL((time % 1), 0.7, 0.6);
+  }
+  function resetHolographic() {
+    holoLight.intensity = 0;
+  }
+
+  function showPopup(sticker) {
+    const overlay = document.getElementById('sticker-popup-overlay');
+    const img = document.getElementById('popup-img');
+    const desc = document.getElementById('popup-desc');
+    if (!overlay || !img || !desc) return;
+    
+    img.src = STICKER_DATA[sticker.key].src;
+    desc.textContent = sticker.description;
+    overlay.classList.add('visible');
+    playTapSound(true);
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    const overlay = document.getElementById('sticker-popup-overlay');
+    if (overlay) {
+      overlay.addEventListener('click', () => {
+        overlay.classList.remove('visible');
+      });
+    }
+  });
 
 
   // ─────────────────────────────────────────────────────────
@@ -254,8 +323,10 @@
       const center = new THREE.Vector3();
       bbox.getCenter(center);
       model.position.sub(center);
-      model.position.y = 0; // Centered vertically
       model.position.z += 6.5;
+
+      // Set default orientation: 90 degrees clockwise (-PI/2)
+      model.rotation.y = -Math.PI / 2;
 
       model.traverse(child => {
         if (!child.isMesh) return;
@@ -322,6 +393,7 @@
   function placeSticker(key, hitPoint, faceNormal, hitObject) {
     const data = STICKER_DATA[key];
     if (!data) return;
+    window.lastPlacementTime = performance.now();
 
     const tex = getTex(key);
 
@@ -368,8 +440,8 @@
       depthWrite: false,
       depthTest: true,
       side: THREE.FrontSide,
-      roughness: 0.7, // Paper/vinyl feel
-      metalness: 0.1,
+      roughness: 0.45, // More receptive to light for holo shimmer
+      metalness: 0.2,
       polygonOffset: true,
       polygonOffsetFactor: -4.5, // Slightly lifted for "depth"
       polygonOffsetUnits: -4.5,
@@ -382,8 +454,30 @@
     mesh.renderOrder = 1;
 
     headGroup.add(mesh);
-    placedStickers.push({ mesh, key, label: data.label });
+    placedStickers.push({ 
+      mesh, 
+      key, 
+      label: data.label, 
+      description: data.description || "" 
+    });
     updateCount();
+
+    // Show insight summary in bottom-right on placement
+    const insightTooltip = document.getElementById('insight-tooltip');
+    const insightImg = document.getElementById('insight-img');
+    const insightText = document.getElementById('insight-text');
+    
+    if (insightTooltip && insightImg && insightText && data.description) {
+      insightImg.src = data.src;
+      insightText.textContent = data.description;
+      insightTooltip.style.opacity = '1';
+      
+      // Auto-hide after 5 seconds
+      clearTimeout(window.insightTimer);
+      window.insightTimer = setTimeout(() => {
+        insightTooltip.style.opacity = '0';
+      }, 5000);
+    }
 
     // Elastic pop-in
     elasticIn(mesh, 1.0);
@@ -440,7 +534,7 @@
 
       headGroup.rotation.set(
         startX * (1 - e),
-        startY * (1 - e),
+        headGroup.rotation.y, // Leave Y to auto-rotation
         startZ * (1 - e)
       );
 
@@ -455,19 +549,18 @@
   }
 
   function updateCount() {
-    const n = placedStickers.length;
-    stickerCount.textContent =
-      n === 0 ? '0 stickers placed' :
-        n === 1 ? '1 sticker placed' :
-          `${n} stickers placed`;
+    // Legacy count removed from UI
   }
 
   // ─────────────────────────────────────────────────────────
   // Drag system
   // ─────────────────────────────────────────────────────────
   function startDrag(key, cx, cy) {
-    if (!headMeshes.length) return;
+    if (activeDragKey) cleanupDrag();
     activeDragKey = key;
+    modelRotateSpeed = ROTATE_SPEED_SLOW;
+    
+    tooltipContainer.textContent = "DROP ON THE HEAD TO PLACE THE STICKER";
 
     ghostImg.src = STICKER_DATA[key].src;
     dragGhost.style.display = 'block';
@@ -480,9 +573,8 @@
     });
 
     dropHint.classList.add('visible');
-    modelAutoRotate = false;
-    controls.enabled = false;
-    clearTimeout(autoRotTimer);
+    // modelAutoRotate = false; // REMOVED: Keep it rotating
+    // clearTimeout(autoRotTimer); // REMOVED: Keep it rotating
   }
 
   function moveDragGhost(cx, cy) {
@@ -558,6 +650,10 @@
 
   function cleanupDrag() {
     activeDragKey = null;
+    modelRotateSpeed = ROTATE_SPEED_NORMAL;
+    
+    // Instruction will revert after the tooltip grace period (see mousemove)
+    
     dragGhost.style.display = 'none';
     dragGhost.style.transition = '';
     dragGhost.style.opacity = '1';
@@ -574,13 +670,16 @@
   // Mouse events
   // ─────────────────────────────────────────────────────────
   // Model Rotation Logic
+  const clickStartPos = { x: 0, y: 0 };
   canvas.addEventListener('mousedown', e => {
     initAudio(); // Initialize audio on first click
     if (activeDragKey) return;
     isRotatingModel = true;
     prevMousePos = { x: e.clientX, y: e.clientY };
+    clickStartPos.x = e.clientX;
+    clickStartPos.y = e.clientY;
 
-    modelAutoRotate = false;
+    // We no longer set modelAutoRotate = false, we just let it keep spinning
     resetAnimActive = false; // Interrupt any ongoing reset
     clearTimeout(autoRotTimer);
   });
@@ -595,7 +694,45 @@
       return;
     }
 
-    // 2. Handle model rotation
+    // 2. Handle holographic hover on stickers
+    setNDC(e.clientX, e.clientY);
+    const tooltipContainer = document.getElementById('drop-hint');
+    let hitSticker = null;
+
+    if (placedStickers.length) {
+      raycaster.setFromCamera(ndcMouse, camera);
+      const hits = raycaster.intersectObjects(placedStickers.map(s => s.mesh), false);
+      if (hits.length) {
+        hitSticker = placedStickers.find(s => s.mesh === hits[0].object);
+      }
+    }
+
+    if (hitSticker) {
+      if (hoveredSticker !== hitSticker) {
+        if (hoveredSticker) resetHolographic(hoveredSticker.mesh);
+        hoveredSticker = hitSticker;
+        applyHolographic(hitSticker.mesh, hits[0].point);
+        
+        // Tooltip text hidden on hover as requested
+        tooltip.textContent = hitSticker.label;
+        tooltip.style.left = (e.clientX + 14) + 'px';
+        tooltip.style.top = (e.clientY - 30) + 'px';
+        tooltip.classList.add('visible');
+      }
+    } else {
+      if (hoveredSticker) {
+        resetHolographic();
+        hoveredSticker = null;
+      }
+      tooltip.classList.remove('visible');
+      // Dynamic suggestions logic handled by interval/state in bottom-center
+      if (activeDragKey) {
+        tooltipContainer.textContent = "DROP ON THE HEAD TO PLACE THE STICKER";
+        tooltipContainer.style.opacity = '1';
+      }
+    }
+
+    // 3. Handle model rotation
     if (isRotatingModel && headGroup) {
       const deltaX = e.clientX - prevMousePos.x;
       const deltaY = e.clientY - prevMousePos.y;
@@ -610,45 +747,37 @@
       return;
     }
 
-    // 3. Hover: show tooltip on placed stickers
-    setNDC(e.clientX, e.clientY);
-    if (placedStickers.length) {
-      raycaster.setFromCamera(ndcMouse, camera);
-      const hits = raycaster.intersectObjects(
-        placedStickers.map(s => s.mesh), false
-      );
-      if (hits.length) {
-        const found = placedStickers.find(s => s.mesh === hits[0].object);
-        if (found) {
-          tooltip.textContent = found.label;
-          tooltip.style.left = (e.clientX + 14) + 'px';
-          tooltip.style.top = (e.clientY - 30) + 'px';
-          tooltip.classList.add('visible');
-          return;
-        }
-      }
-    }
-    tooltip.classList.remove('visible');
+    // Remove old hover block replaced above
   });
 
   window.addEventListener('mouseup', e => {
     if (activeDragKey) {
       endDrag(e.clientX, e.clientY);
-      // Also trigger reset after placing sticker if not dragging
       clearTimeout(autoRotTimer);
-      autoRotTimer = setTimeout(() => {
-        smoothReset();
-      }, 3000);
+      autoRotTimer = setTimeout(() => { smoothReset(); }, 3000);
+      return;
     }
 
     if (isRotatingModel) {
       isRotatingModel = false;
+      
+      // Click detection
+      const dist = Math.hypot(e.clientX - clickStartPos.x, e.clientY - clickStartPos.y);
+      if (dist < 5) {
+        setNDC(e.clientX, e.clientY);
+        raycaster.setFromCamera(ndcMouse, camera);
+        const hits = raycaster.intersectObjects(placedStickers.map(s => s.mesh), false);
+        if (hits.length) {
+          const s = placedStickers.find(st => st.mesh === hits[0].object);
+          if (s) showPopup(s);
+        }
+      }
+
       clearTimeout(autoRotTimer);
       autoRotTimer = setTimeout(() => {
         smoothReset();
       }, 3000);
     }
-    isRotatingModel = false;
   });
 
   // ─────────────────────────────────────────────────────────
@@ -667,6 +796,9 @@
     endDrag(t.clientX, t.clientY);
   });
 
+  // ─────────────────────────────────────────────────────────
+  // Resize
+  // ─────────────────────────────────────────────────────────
   window.addEventListener('resize', () => {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
@@ -679,6 +811,13 @@
   fetch('prompts.json')
     .then(res => res.json())
     .then(data => {
+      // Merge descriptions into STICKER_DATA
+      data.forEach(item => {
+        if (STICKER_DATA[item.stickerKey]) {
+          STICKER_DATA[item.stickerKey].description = item.description;
+        }
+      });
+
       const list = document.getElementById('prompt-list');
       data.forEach(item => {
         const btn = document.createElement('button');
@@ -686,11 +825,15 @@
         btn.dataset.key = item.stickerKey;
         btn.textContent = item.question;
 
-        btn.addEventListener('mousedown', e => {
+        btn.addEventListener('click', e => {
           e.preventDefault();
-          initAudio(); // Ensure audio context
-          playTapSound(); // Pickup sound
-          startDrag(btn.dataset.key, e.clientX, e.clientY);
+          initAudio();
+          playTapSound();
+          if (activeDragKey === item.stickerKey) {
+            cleanupDrag();
+          } else {
+            startDrag(item.stickerKey, e.clientX, e.clientY);
+          }
         });
         btn.addEventListener('touchstart', e => {
           e.preventDefault();
@@ -706,28 +849,77 @@
     .catch(err => console.error("Error loading prompts:", err));
 
   // ─────────────────────────────────────────────────────────
-  // Splash Interaction
+  // Splash & Utility Interactions
   // ─────────────────────────────────────────────────────────
-  const splash = document.getElementById('splash');
   if (splash) {
     splash.addEventListener('click', () => {
       initAudio();
       splash.classList.add('hidden');
-      // Delay rotation and branding until logo lands (2.4s transition)
+      
+      // Delay rotation until logo lands (2.4s transition)
       setTimeout(() => {
-        document.getElementById('brand').style.opacity = '1';
         modelAutoRotate = true;
       }, 2400);
+
+      // Staggered prompt entrance: bottom to top
+      const btns = Array.from(document.querySelectorAll('.prompt-btn'));
+      btns.reverse().forEach((btn, i) => {
+        setTimeout(() => {
+          btn.classList.add('v-shown');
+        }, 400 + (i * 60)); // Faster staggered entrance
+      });
+
+      // Start suggestion cycle for bottom-center tooltip
+      suggestionTimer = setInterval(() => {
+        // Only cycle if we aren't currently carrying a sticker
+        if (!activeDragKey) {
+          tooltipContainer.style.opacity = '0';
+          setTimeout(() => {
+            currentSugIdx = (currentSugIdx + 1) % suggestions.length;
+            tooltipContainer.textContent = suggestions[currentSugIdx];
+            tooltipContainer.style.opacity = '1';
+          }, 500);
+        }
+      }, 6000);
     });
   }
+
+  // Mute Toggle
+  const muteBtn = document.getElementById('mute-btn');
+  let isMuted = false;
+  muteBtn.addEventListener('click', () => {
+    isMuted = !isMuted;
+    bgAudio.muted = isMuted;
+    muteBtn.innerHTML = isMuted ? 
+      `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><line x1="23" y1="9" x2="17" y2="15"></line><line x1="17" y1="9" x2="23" y2="15"></line></svg>` : 
+      `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>`;
+  });
+
+  // Info Handler
+  const infoBtn = document.getElementById('info-btn');
+  const infoOverlay = document.getElementById('info-popup-overlay');
+  infoBtn.addEventListener('click', () => {
+    infoOverlay.classList.add('visible');
+    playTapSound(true);
+  });
+  infoOverlay.addEventListener('click', () => {
+    infoOverlay.classList.remove('visible');
+  });
 
   // ─────────────────────────────────────────────────────────
   // Render loop
   // ─────────────────────────────────────────────────────────
   (function animate() {
     requestAnimationFrame(animate);
-    // Rotate the model (not the camera) so shadow stays fixed
-    if (modelAutoRotate && headGroup) {
+
+    // Constant shimmering pulse for holographic light
+    if (holoLight && holoLight.intensity > 0) {
+      const time = performance.now() * 0.001;
+      holoLight.color.setHSL((time % 1), 0.65, 0.55);
+    }
+
+    // Rotate the model (not the camera) so shadow stays fixed - ALWAYS rotating as requested
+    if (headGroup) {
       headGroup.rotation.y += modelRotateSpeed;
     }
     renderer.render(scene, camera);

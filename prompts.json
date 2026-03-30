@@ -1,23 +1,27 @@
 [
   {
     "question": "What's a tool or material you keep coming back to that surprises people?",
-    "stickerKey": "op1"
+    "stickerKey": "op1",
+    "description": "A reliable favorite, chosen for its consistent performance and surprising versatility."
   },
   {
     "question": "When something isn't working, what's my move?",
-    "stickerKey": "break"
+    "stickerKey": "break",
+    "description": "Tests ideas with kids. A child suggested an AC unit in a chair. That's a real furniture insight that took a 10-second conversation to arrive at."
   },
   {
     "question": "Where do I do my best thinking?",
-    "stickerKey": "cahir"
+    "stickerKey": "cahir",
+    "description": "The cognitive sanctuary, where focus crystallizes and ideas take flight."
   },
   {
     "question": "When I start something new, what's the first thing I actually do?",
-    "stickerKey": "make"
+    "stickerKey": "make",
+    "description": "The decisive inception, the moment when concept first touches reality."
   },
   {
     "question": "What's the weirdest thing you've made?",
-    "stickerKey": "star"
+    "stickerKey": "star",
+    "description": "The eccentric outlier, a byproduct of uninhibited experimentation."
   }
-  
 ]
