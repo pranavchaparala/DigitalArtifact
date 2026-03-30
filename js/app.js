@@ -167,7 +167,7 @@
   // Audio — background ambient
   const bgAudio = new Audio('Music_fx_generative_ambient_texture_no_melod.wav');
   bgAudio.loop = true;
-  bgAudio.volume = 0.08;
+  bgAudio.volume = 0.8;
 
   // Web Audio Context for procedural "tap" sound
   let audioContext = null;
