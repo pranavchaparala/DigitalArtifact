@@ -40,7 +40,7 @@
   // Background wall — invisible, only catches shadow
   const wallMesh = new THREE.Mesh(
     new THREE.PlaneGeometry(60, 60),
-    new THREE.ShadowMaterial({ opacity: 0.08 }) // Reduced opacity for subtle shadow
+    new THREE.ShadowMaterial({ opacity: 0.12 }) // Slightly increased for better grounding
   );
   wallMesh.position.z = -6; // Brought a little closer
   wallMesh.rotation.x = -0.15;
@@ -64,22 +64,22 @@
   window.addEventListener('wheel', e => {
     // Only zoom if not dragging a sticker
     if (activeDragKey) return;
-    
+
     // Smooth zoom adjustment
     const zoomAmount = e.deltaY * 0.02;
     camera.position.z += zoomAmount;
-    
+
     // Strict Zoom Limits
     const minZ = 12;
     const maxZ = 38;
     camera.position.z = Math.max(minZ, Math.min(maxZ, camera.position.z));
-    
+
     // Prevent page scroll
     if (e.cancelable) e.preventDefault();
   }, { passive: false });
 
   // Model-based rotation state
-  let modelAutoRotate = true;
+  let modelAutoRotate = false;
   const modelRotateSpeed = 0.003;
 
   // ─────────────────────────────────────────────────────────
@@ -87,50 +87,38 @@
   // ─────────────────────────────────────────────────────────
   scene.add(new THREE.AmbientLight(0xE4E4E4, 0.35));
 
-  // Key — top-left, casting shadow
-  const keyLight = new THREE.DirectionalLight(0xfff8f0, 0.95); // Balanced low
-  keyLight.position.set(-5, 6, 6);
-  keyLight.castShadow = true;
-  keyLight.shadow.mapSize.set(2048, 2048);
-  keyLight.shadow.camera.near = 0.5;
-  keyLight.shadow.camera.far = 40;
-  keyLight.shadow.camera.left = -12;
-  keyLight.shadow.camera.right = 12;
-  keyLight.shadow.camera.top = 12;
-  keyLight.shadow.camera.bottom = -12;
-  keyLight.shadow.radius = 290; // Heavily blurred spread
-  keyLight.shadow.bias = -0.0005;
-  scene.add(keyLight);
+  // Main Light — from upper-left, strong (matching ref image)
+  const dirLight1 = new THREE.DirectionalLight(0xffffff, 1.1);
+  dirLight1.position.set(-15, 20, 15);
+  dirLight1.castShadow = true;
+  dirLight1.shadow.mapSize.width = 1024;
+  dirLight1.shadow.mapSize.height = 1024;
+  dirLight1.shadow.camera.near = 0.5;
+  dirLight1.shadow.camera.far = 100;
+  dirLight1.shadow.camera.left = -20;
+  dirLight1.shadow.camera.right = 20;
+  dirLight1.shadow.camera.top = 20;
+  dirLight1.shadow.camera.bottom = -20;
+  dirLight1.shadow.radius = 12; // Form-defining softness, not total blur
+  scene.add(dirLight1);
 
-  // Secondary Key — top-right, opposite side
-  const keyLightOpposite = new THREE.DirectionalLight(0xfff8f0, 0.82); 
-  keyLightOpposite.position.set(5, 6, 6);
-  scene.add(keyLightOpposite);
+  // Fill Light — from right, very subtle
+  const dirLight2 = new THREE.DirectionalLight(0xffffff, 0.15);
+  dirLight2.position.set(20, 5, 10);
+  scene.add(dirLight2);
 
-  // Fill — bottom-right, very subtle cool
-  const fillLight = new THREE.DirectionalLight(0xe0e4e8, 0.25);
-  fillLight.position.set(5, -2, 3);
-  scene.add(fillLight);
-
-  // Rim — from behind, faint separation
-  const rimLight = new THREE.DirectionalLight(0xffffff, 0.15);
-  rimLight.position.set(1, 0, -6);
-  scene.add(rimLight);
-
-  // Background-only spotlight — soft glow from top-left on wall
-  // Uses layers so it only affects the wall, not the model
-  const bgSpot = new THREE.SpotLight(0xffffff, 25, 140, Math.PI / 3, 80.0, 0.5);
-  bgSpot.position.set(-4, 10, 3);
-  bgSpot.target.position.set(2, -2, -4);
+  // Background-only gradient — strong top-left (matching ref image)
+  const bgSpot = new THREE.SpotLight(0xffffff, 35, 100, Math.PI / 4, 0.8, 0.4);
+  bgSpot.position.set(-15, 15, -2);
+  bgSpot.target.position.set(5, -5, -6);
   bgSpot.layers.set(1);
   scene.add(bgSpot);
   scene.add(bgSpot.target);
-  wallMesh.layers.enable(1);
 
-  // Background-only spotlight — soft glow from top-right on wall
-  const bgSpotRight = new THREE.SpotLight(0xffffff, 8, 140, Math.PI / 3, 100.0, 1);
-  bgSpotRight.position.set(8, 10, 2);
-  bgSpotRight.target.position.set(-2, -2, -4);
+  // Background-only fill — very subtle across wall
+  const bgSpotRight = new THREE.SpotLight(0xffffff, 5, 150, Math.PI / 2, 1, 1);
+  bgSpotRight.position.set(10, 5, 0);
+  bgSpotRight.target.position.set(0, 0, -6);
   bgSpotRight.layers.set(1);
   scene.add(bgSpotRight);
   scene.add(bgSpotRight.target);
@@ -138,6 +126,62 @@
   // ─────────────────────────────────────────────────────────
   // State
   // ─────────────────────────────────────────────────────────
+  // Audio — background ambient
+  const bgAudio = new Audio('Music_fx_generative_ambient_texture_no_melod.wav');
+  bgAudio.loop = true;
+  bgAudio.volume = 0.08;
+
+  // Web Audio Context for procedural "tap" sound
+  let audioContext = null;
+  function initAudio() {
+    if (audioContext) {
+      if (audioContext.state === 'suspended') audioContext.resume();
+      return;
+    }
+    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    bgAudio.play().catch(() => { });
+  }
+
+  function playTapSound(isDrop = false) {
+    if (!audioContext || audioContext.state === 'suspended') return;
+    const now = audioContext.currentTime;
+
+    // Impact: Low-freq sine for the "stone" thud
+    const osc = audioContext.createOscillator();
+    const oscGain = audioContext.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(isDrop ? 180 : 240, now);
+    osc.frequency.exponentialRampToValueAtTime(isDrop ? 90 : 120, now + 0.1);
+    oscGain.gain.setValueAtTime(isDrop ? 0.08 : 0.04, now);
+    oscGain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+    osc.connect(oscGain);
+    oscGain.connect(audioContext.destination);
+
+    // Friction: Filtered noise for the "adhesive/paper" press
+    const bufferSize = audioContext.sampleRate * 0.1;
+    const buffer = audioContext.createBuffer(1, bufferSize, audioContext.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+
+    const noise = audioContext.createBufferSource();
+    noise.buffer = buffer;
+    const noiseFilter = audioContext.createBiquadFilter();
+    noiseFilter.type = 'lowpass';
+    noiseFilter.frequency.setValueAtTime(800, now);
+
+    const noiseGain = audioContext.createGain();
+    noiseGain.gain.setValueAtTime(isDrop ? 0.06 : 0.03, now);
+    noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+
+    noise.connect(noiseFilter);
+    noiseFilter.connect(noiseGain);
+    noiseGain.connect(audioContext.destination);
+
+    osc.start(now);
+    osc.stop(now + 0.1);
+    noise.start(now);
+    noise.stop(now + 0.1);
+  }
   let headMeshes = [];
   let headGroup = null;
   let placedStickers = [];   // { mesh, key, label }
@@ -150,7 +194,7 @@
   let resetAnimActive = false;
 
   // Global scale for stickers - increase this for uniform scaling
-  const STICKER_SCALE = 2; 
+  const STICKER_SCALE = 2;
 
   const raycaster = new THREE.Raycaster();
   const ndcMouse = new THREE.Vector2();
@@ -170,16 +214,17 @@
     return t;
   }
 
+
   // ─────────────────────────────────────────────────────────
   // Load GLB
   // ─────────────────────────────────────────────────────────
   // ─────────────────────────────────────────────────────────
   // 1. Setup the Concrete Material (Rough, Matte Gray)
   const marbleMaterial = new THREE.MeshPhysicalMaterial({
-    color: 0x555555,            // Concrete gray
-    roughness: 1.0,             // Maximum matte for concrete
-    metalness: 0.05,            // Slight grit
-    reflectivity: 0.1,          // Low reflectivity
+    color: 0xe0e0e0,            // Lighter plaster/marble
+    roughness: 0.9,             // Slightly more reflective than concrete
+    metalness: 0.0,
+    reflectivity: 0.2,
     clearcoat: 0.0,
     flatShading: false
   });
@@ -210,7 +255,7 @@
       bbox.getCenter(center);
       model.position.sub(center);
       model.position.y = 0; // Centered vertically
-      model.position.z += 6.5; 
+      model.position.z += 6.5;
 
       model.traverse(child => {
         if (!child.isMesh) return;
@@ -298,6 +343,7 @@
     const orientation = new THREE.Euler().setFromQuaternion(q);
 
     // Random size modified by uniform STICKER_SCALE constant
+    playTapSound(true); // Play feedback sound immediately on drop
     const s = (0.42 + Math.random() * 0.26) * STICKER_SCALE;
 
     // Use DecalGeometry to wrap around the mesh surface
@@ -373,11 +419,11 @@
   function smoothReset() {
     if (!headGroup || resetAnimActive) return;
     resetAnimActive = true;
-    
+
     const startX = headGroup.rotation.x;
     const startY = headGroup.rotation.y % (Math.PI * 2);
     const startZ = headGroup.rotation.z;
-    
+
     const start = performance.now();
     const duration = 1200;
 
@@ -388,10 +434,10 @@
         resetAnimActive = false;
         return;
       }
-      
+
       const t = Math.min((now - start) / duration, 1.0);
       const e = ease(t);
-      
+
       headGroup.rotation.set(
         startX * (1 - e),
         startY * (1 - e),
@@ -529,10 +575,11 @@
   // ─────────────────────────────────────────────────────────
   // Model Rotation Logic
   canvas.addEventListener('mousedown', e => {
+    initAudio(); // Initialize audio on first click
     if (activeDragKey) return;
     isRotatingModel = true;
     prevMousePos = { x: e.clientX, y: e.clientY };
-    
+
     modelAutoRotate = false;
     resetAnimActive = false; // Interrupt any ongoing reset
     clearTimeout(autoRotTimer);
@@ -552,13 +599,13 @@
     if (isRotatingModel && headGroup) {
       const deltaX = e.clientX - prevMousePos.x;
       const deltaY = e.clientY - prevMousePos.y;
-      
+
       headGroup.rotation.y += deltaX * 0.005;
       headGroup.rotation.x += deltaY * 0.005;
 
       // Limit vertical rotation to avoid flipping
       headGroup.rotation.x = Math.max(-Math.PI * 0.25, Math.min(Math.PI * 0.25, headGroup.rotation.x));
-      
+
       prevMousePos = { x: e.clientX, y: e.clientY };
       return;
     }
@@ -593,7 +640,7 @@
         smoothReset();
       }, 3000);
     }
-    
+
     if (isRotatingModel) {
       isRotatingModel = false;
       clearTimeout(autoRotTimer);
@@ -620,9 +667,6 @@
     endDrag(t.clientX, t.clientY);
   });
 
-  // ─────────────────────────────────────────────────────────
-  // Resize
-  // ─────────────────────────────────────────────────────────
   window.addEventListener('resize', () => {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
@@ -644,11 +688,15 @@
 
         btn.addEventListener('mousedown', e => {
           e.preventDefault();
+          initAudio(); // Ensure audio context
+          playTapSound(); // Pickup sound
           startDrag(btn.dataset.key, e.clientX, e.clientY);
         });
         btn.addEventListener('touchstart', e => {
           e.preventDefault();
           const t = e.touches[0];
+          initAudio();
+          playTapSound();
           startDrag(btn.dataset.key, t.clientX, t.clientY);
         }, { passive: false });
 
@@ -656,6 +704,22 @@
       });
     })
     .catch(err => console.error("Error loading prompts:", err));
+
+  // ─────────────────────────────────────────────────────────
+  // Splash Interaction
+  // ─────────────────────────────────────────────────────────
+  const splash = document.getElementById('splash');
+  if (splash) {
+    splash.addEventListener('click', () => {
+      initAudio();
+      splash.classList.add('hidden');
+      // Delay rotation and branding until logo lands (2.4s transition)
+      setTimeout(() => {
+        document.getElementById('brand').style.opacity = '1';
+        modelAutoRotate = true;
+      }, 2400);
+    });
+  }
 
   // ─────────────────────────────────────────────────────────
   // Render loop
