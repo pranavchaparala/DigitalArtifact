@@ -167,7 +167,7 @@
   // Audio — background ambient
   const bgAudio = new Audio('Music_fx_generative_ambient_texture_no_melod.wav');
   bgAudio.loop = true;
-  bgAudio.volume = 0.8;
+  bgAudio.volume = 0.6;
 
   // Web Audio Context for procedural "tap" sound
   let audioContext = null;
@@ -180,8 +180,10 @@
     bgAudio.play().catch(() => { });
   }
 
+  let isAutoPlacing = false;
+
   function playTapSound(isDrop = false) {
-    if (!audioContext || audioContext.state === 'suspended') return;
+    if (isAutoPlacing || !audioContext || audioContext.state === 'suspended') return;
     const now = audioContext.currentTime;
 
     // Impact: Low-freq sine for the "stone" thud
@@ -190,8 +192,8 @@
     osc.type = 'sine';
     osc.frequency.setValueAtTime(isDrop ? 180 : 240, now);
     osc.frequency.exponentialRampToValueAtTime(isDrop ? 90 : 120, now + 0.1);
-    oscGain.gain.setValueAtTime(isDrop ? 0.08 : 0.04, now);
-    oscGain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+    oscGain.gain.setValueAtTime(isDrop ? 0.35 : 0.20, now); // Increased volume
+    oscGain.gain.exponentialRampToValueAtTime(0.001, now + 0.1); // Slightly longer decay
     osc.connect(oscGain);
     oscGain.connect(audioContext.destination);
 
@@ -208,8 +210,9 @@
     noiseFilter.frequency.setValueAtTime(800, now);
 
     const noiseGain = audioContext.createGain();
-    noiseGain.gain.setValueAtTime(isDrop ? 0.06 : 0.03, now);
-    noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+    noiseGain.gain.setValueAtTime(isDrop ? 0.25 : 0.15, now); // Increased volume
+    noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+
 
     noise.connect(noiseFilter);
     noiseFilter.connect(noiseGain);
@@ -490,6 +493,11 @@
     });
     updateCount();
 
+    // Reset the idle auto-placement timer every time a sticker is manually placed
+    if (!isAutoPlacing && typeof resetIdleTimer === 'function') {
+      resetIdleTimer();
+    }
+
     // Show insight summary in bottom-right on placement
     const insightTooltip = document.getElementById('insight-tooltip');
     const insightImg = document.getElementById('insight-img');
@@ -588,7 +596,7 @@
     activeDragKey = key;
     modelRotateSpeed = ROTATE_SPEED_SLOW;
 
-    tooltipContainer.textContent = "DROP ON THE HEAD TO PLACE THE STICKER";
+    tooltipContainer.textContent = "DROP THE STICKER ON THE HEAD";
 
     ghostImg.src = STICKER_DATA[key].src;
     dragGhost.style.display = 'block';
@@ -600,7 +608,7 @@
       if (b.dataset.key === key) b.classList.add('dragging-item');
     });
 
-    dropHint.classList.add('visible');
+    dropHint.classList.add('visible', 'pulsing');
     // modelAutoRotate = false; // REMOVED: Keep it rotating
     // clearTimeout(autoRotTimer); // REMOVED: Keep it rotating
   }
@@ -686,7 +694,7 @@
     dragGhost.style.transition = '';
     dragGhost.style.opacity = '1';
     ghostImg.src = '';
-    dropHint.classList.remove('visible');
+    dropHint.classList.remove('visible', 'pulsing');
     canvas.style.cursor = 'default';
     cursorRing.classList.remove('visible', 'active');
     document.querySelectorAll('.sticker-btn').forEach(b =>
@@ -888,7 +896,7 @@
   // Splash & Utility Interactions
   // ─────────────────────────────────────────────────────────
   if (splash) {
-    splash.addEventListener('click', () => {
+      splash.addEventListener('click', () => {
       initAudio();
       splash.classList.add('hidden');
 
@@ -896,6 +904,9 @@
       setTimeout(() => {
         modelAutoRotate = true;
       }, 2400);
+
+      // Start idle auto-placement timer after splash is dismissed
+      resetIdleTimer();
 
       // Staggered prompt entrance: bottom to top
       const btns = Array.from(document.querySelectorAll('.prompt-btn'));
@@ -959,6 +970,70 @@
     tooltip.classList.remove('visible');
     playTapSound(false);
   });
+
+  // ─────────────────────────────────────────────────────────
+  // Idle Auto-Placement
+  // ─────────────────────────────────────────────────────────
+  let idleTimer = null;
+  let autoPlaceTimer = null;
+  const IDLE_TIMEOUT = 12000; // 12 seconds without placing a sticker
+  const AUTO_PLACE_INTERVAL = 6000; // Place every 6s
+
+  function resetIdleTimer() {
+    clearTimeout(idleTimer);
+    clearInterval(autoPlaceTimer);
+    idleTimer = setTimeout(startAutoPlacement, IDLE_TIMEOUT);
+  }
+
+  function startAutoPlacement() {
+    if (!headGroup) return;
+    // Place the first one immediately, then continue at interval
+    placeRandomSticker();
+    autoPlaceTimer = setInterval(placeRandomSticker, AUTO_PLACE_INTERVAL);
+  }
+
+  function placeRandomSticker() {
+    const keys = Object.keys(STICKER_DATA);
+    if (keys.length === 0) return;
+    const randomKey = keys[Math.floor(Math.random() * keys.length)];
+    
+    // Raycast from the camera position so stickers land on the user-facing side
+    let bestHit = null;
+    let bestFlatness = -1;
+    
+    for (let attempts = 0; attempts < 30; attempts++) {
+      // Random screen-space coordinates to cast rays from camera
+      const rndX = (Math.random() - 0.5) * 1.6; // NDC x: roughly -0.8 to 0.8
+      const rndY = (Math.random() - 0.5) * 1.6; // NDC y: roughly -0.8 to 0.8
+      
+      raycaster.setFromCamera(new THREE.Vector2(rndX, rndY), camera);
+      
+      const hits = raycaster.intersectObject(headGroup, true);
+      if (hits.length > 0) {
+        const hit = hits[0];
+        const worldNormal = hit.face.normal.clone()
+          .transformDirection(hit.object.matrixWorld)
+          .normalize();
+        // Flatness = how directly the surface faces the camera
+        const viewDir = camera.getWorldDirection(new THREE.Vector3());
+        const flatness = Math.abs(worldNormal.dot(viewDir.negate()));
+        
+        if (flatness > bestFlatness) {
+          bestFlatness = flatness;
+          bestHit = hit;
+        }
+        if (flatness > 0.85) break;
+      }
+    }
+
+    if (bestHit) {
+      isAutoPlacing = true;
+      placeSticker(randomKey, bestHit.point, bestHit.face.normal, bestHit.object);
+      isAutoPlacing = false;
+    }
+  }
+
+  // Do NOT start timer on page load; it starts when splash is dismissed via resetIdleTimer()
 
   // ─────────────────────────────────────────────────────────
   // Render loop

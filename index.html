@@ -83,6 +83,13 @@
       pointer-events: none; user-select: none;
       text-align: center;
     }
+    #drop-hint.pulsing {
+      animation: hintPop 1.2s ease-in-out infinite;
+    }
+    @keyframes hintPop {
+      0%, 100% { transform: translateX(-50%) scale(1); opacity: 0.7; }
+      50% { transform: translateX(-50%) scale(1.12); opacity: 1; }
+    }
 
     #insight-tooltip {
       position: fixed; bottom: 84px; right: 32px; z-index: 10;
@@ -263,6 +270,30 @@
       transition: transform 0.8s cubic-bezier(0.22, 1, 0.36, 1);
     }
     .visible .popup-card { transform: scale(1); }
+
+    .close-popup-btn {
+      position: absolute;
+      top: 32px;
+      right: 32px;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      color: rgba(255, 255, 255, 0.8);
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.3s ease;
+      z-index: 10;
+    }
+    .close-popup-btn svg { width: 20px; height: 20px; }
+    .close-popup-btn:hover {
+      background: rgba(255, 255, 255, 0.2);
+      color: #fff;
+      transform: rotate(90deg);
+    }
 
     .popup-img { width: 240px; height: auto; margin-bottom: 32px; filter: drop-shadow(0 10px 20px rgba(0,0,0,0.3)); }
     .popup-desc { 
@@ -526,11 +557,11 @@
       <img src="logo.png" class="splash-logo-img" alt="Logo">
       <div class="splash-subtitle">A data portrait built to be vandalized.</div>
       <div class="splash-body">
-        <p>In New York, identity isn't given; it's claimed. Every tagged brick and wheat-pasted door is a layer of existence—an honest, chaotic record of "I am here.".</p>
-        <p>De//Faced is a rotating 3D sculpture of my head, stripped of detail and waiting for impact. It is a blank canvas that only gains definition through your interference. My practice isn't a finished object to be observed—it's a surface to be marked.</p>
-        <p>Leave your mark. Choose a prompt to slap a fragment of my process onto the void.</p>
+        <p>I moved to New York and couldn't stop looking at the walls — every surface tagged, stickered, layered with people saying I was here, this is me. The city calls it vandalism. I call it the most honest portrait format that exists.</p>
+        <p>So I made one of myself.</p>
+        <p>De//Faced is a 3D sculpture of my head that you vandalize to get to know me. Ask it a question about my creative practice — Nano Banana answers as me and generates a sticker from that answer. Drag it onto the surface yourself. The more you mark it up, the more I come into focus.</p>
       </div>
-      <div id="splash-click-text">Click to Begin</div>
+      <div id="splash-click-text">Start marking</div>
     </div>
   </div>
 
@@ -541,7 +572,7 @@
   </div>
 
   <div id="brand"><img src="logo.png" id="brand-logo" alt="Logo"></div>
-  <div id="drop-hint">CHOOSE AN INSIGHT TO BEGIN</div>
+  <div id="drop-hint">DROP THE STICKER ON THE HEAD</div>
   <div id="insight-tooltip">
     <img src="" alt="" id="insight-img">
     <span id="insight-text"></span>
@@ -572,11 +603,15 @@
   
   <div id="credits">
     Built with Gemini 3.1 Pro on Antigravity<br>
-    Stickers Made with Nano Banana 2
+    Stickers Made with Nano Banana 2<br>
+    Music generated with MusicFX
   </div>
 
   <!-- Sticker Popup -->
   <div id="sticker-popup-overlay">
+    <button class="close-popup-btn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+    </button>
     <div class="popup-card">
       <img id="popup-img" class="popup-img" src="" alt="">
       <div id="popup-desc" class="popup-desc"></div>
@@ -585,12 +620,22 @@
 
   <!-- Info Popup -->
   <div id="info-popup-overlay">
+    <button class="close-popup-btn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+    </button>
     <div class="popup-card">
-      <img src="logo.png" class="popup-img" alt="Logo" style="width: 140px; margin-bottom: 24px;">
+      <img src="logo.png" class="popup-img" alt="Logo" style="width: 140px; margin-bottom: 8px;">
+      <p style="font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.14em; margin-bottom: 28px;">A data portrait built to be vandalized.</p>
       <div class="popup-desc" style="text-align: justify; max-width: 520px; text-transform: none; letter-spacing: 0.02em;">
-        <p style="margin-bottom: 16px;">In New York, identity isn't given; it's claimed. Every tagged brick and wheat-pasted door is a layer of existence—an honest, chaotic record of "I am here.".</p>
-        <p style="margin-bottom: 16px;">De//Faced is a rotating 3D sculpture of my head, stripped of detail and waiting for impact. It is a blank canvas that only gains definition through your interference. My practice isn't a finished object to be observed—it's a surface to be marked.</p>
-        <p>Leave your mark. Choose a prompt to slap a fragment of my process onto the void.</p>
+        <p style="margin-bottom: 16px;">I moved to New York and couldn't stop looking at the walls — every surface tagged, stickered, layered with people saying I was here, this is me. The city calls it vandalism. I call it the most honest portrait format that exists.</p>
+        <p style="margin-bottom: 16px;">So I made one of myself.</p>
+        <p style="margin-bottom: 16px;">De//Faced is a 3D sculpture of my head that you vandalize to get to know me. Ask it a question about my creative practice — Nano Banana answers as me and generates a sticker from that answer. Drag it onto the surface yourself. The more you mark it up, the more I come into focus.</p>
+
+        <p style="font-size: 11px; color: var(--muted); text-align: left; margin-top: 24px;">
+          Built with Gemini 3.1 Pro on Antigravity<br>
+          Stickers made with Nano Banana 2<br>
+          Music generated with MusicFX
+        </p>
       </div>
     </div>
   </div>
