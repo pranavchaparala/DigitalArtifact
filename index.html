@@ -84,7 +84,7 @@
     }
 
     #insight-tooltip {
-      position: fixed; bottom: 48px; right: 48px; z-index: 10;
+      position: fixed; bottom: 84px; right: 32px; z-index: 10;
       padding: 18px;
       background: var(--pill); border: 1px solid var(--pill-border);
       border-radius: 12px; font-size: 13px; max-width: 320px;
@@ -175,7 +175,7 @@
     #prompt-container {
       position: fixed;
       left: 32px;
-      bottom: 48px;
+      bottom: 64px; /* Lifted up slightly to clear the indicator */
       z-index: 10;
       /* Remove rigid height from container, let list dictate it up to its max */
       height: fit-content;
@@ -192,7 +192,7 @@
       position: fixed;
       bottom: 24px; /* Placed cleanly below the prompt container which is at bottom: 48px */
       left: 32px;
-      width: 100%;
+      width: fit-content;
       text-align: left;
       font-size: 9px;
       font-weight: 500;
@@ -202,6 +202,22 @@
       pointer-events: none;
       animation: pulse 4s infinite; /* Blink very slowly */
       z-index: 20;
+    }
+
+    #credits {
+      position: fixed;
+      bottom: 24px;
+      right: 32px;
+      width: fit-content;
+      text-align: right;
+      font-size: 9px;
+      font-weight: 500;
+      letter-spacing: 0.15em;
+      color: var(--muted);
+      text-transform: uppercase;
+      pointer-events: none;
+      z-index: 20;
+      line-height: 1.6;
     }
 
     #prompt-list {
@@ -505,6 +521,11 @@
     <div id="prompt-list"></div>
   </div>
   <div id="scroll-indicator">Scroll for more</div>
+  
+  <div id="credits">
+    Built with Gemini 3.1 Pro on Antigravity<br>
+    Stickers Made with Nano Banana 2
+  </div>
 
   <!-- Sticker Popup -->
   <div id="sticker-popup-overlay">
